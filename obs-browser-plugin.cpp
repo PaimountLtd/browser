@@ -48,7 +48,7 @@ MODULE_EXPORT const char *obs_module_description(void)
 	return "CEF-based web browser source & panels";
 }
 
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32)
 static int adapterCount = 0;
 #endif
 static std::wstring deviceId;
