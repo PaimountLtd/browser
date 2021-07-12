@@ -28,6 +28,7 @@
 
 #include "cef-headers.hpp"
 #include <mutex>
+#include "browser-config.h"
 
 using grpc::ServerUnaryReactor;
 using grpc::Status;
@@ -64,7 +65,6 @@ public:
 #elif defined(__APPLE__)
 	void *last_handle = nullptr;
 #endif
-// #endif
 
 	uint32_t width;
 	uint32_t height;

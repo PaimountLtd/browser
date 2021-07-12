@@ -102,18 +102,7 @@ bool BrowserClient::OnProcessMessageReceived(
 #endif
 	CefProcessId, CefRefPtr<CefProcessMessage> message)
 {
- 	const std::string &name = message->GetName();
- 	Json json;
-
- 	CefRefPtr<CefProcessMessage> msg =
- 		CefProcessMessage::Create("executeCallback");
-
- 	CefRefPtr<CefListValue> args = msg->GetArgumentList();
- 	args->SetInt(0, message->GetArgumentList()->GetInt(0));
- 	args->SetString(1, json.dump());
-
- 	SendBrowserProcessMessage(browser, PID_RENDERER, msg);
-
+	// Not implemented
 	return true;
 }
 #if CHROME_VERSION_BUILD >= 3578
