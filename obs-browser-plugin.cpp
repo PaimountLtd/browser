@@ -120,6 +120,8 @@ margin: 0px auto; \
 overflow: hidden; \
 }";
 
+static const char *default_browser_options = "";
+
 static void browser_source_get_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_string(settings, "url",
@@ -136,6 +138,7 @@ static void browser_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "is_media_flag", false);
 	obs_data_set_default_bool(settings, "restart_when_active", false);
 	obs_data_set_default_string(settings, "css", default_css);
+	obs_data_set_default_string(settings, "browser_options", default_browser_options);
 
 #ifdef __APPLE__
 	obs_data_set_default_bool(settings, "reroute_audio", true);
@@ -156,11 +159,25 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 	return true;
 }
 
-static bool is_mediaflag_modified(obs_properties_t *props, obs_property_t *,
+static bool on_browser_options_changed(obs_properties_t *props,
+				       obs_property_t *property,
 				   obs_data_t *settings)
 {
-	bool enabled = obs_data_get_bool(settings, "is_media_flag");
+	std::map<string, string> parameters;
+	char* options = (char*)obs_data_get_string(settings, "browser_options");
+	char *token = strtok(options, " ");
+	while (token) {
+		blog(LOG_INFO, "Adding CEF parameter %s", token);
+		char *parameter = strtok(token, "=");
+		char *value = strtok(token, "=");
+		parameters[parameter] = value;	// NOTE: this may be null
+	}
 	return true;
+}
+static void on_browser_flags_modified(obs_properties_t *props,
+				      obs_property_modified_t modified)
+{
+	obs_properties_t *new_flags = props;
 }
 
 static bool is_fps_custom(obs_properties_t *props, obs_property_t *,
@@ -183,6 +200,9 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *prop = obs_properties_add_bool(props, "is_local_file", obs_module_text("LocalFile"));
 	obs_property_t *is_media_flag_prop = obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");
 	obs_property_set_visible(is_media_flag_prop, false);
+	obs_property_t *browser_flag_prop =
+		obs_properties_add_string(default_browser_setttings);
+	obs_property_set_modified_callback(browser_flag_prop, on_browser_flags_modified)
 
 	if (bs && !bs->url.empty()) {
 		const char *slash;
@@ -220,6 +240,9 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *p = obs_properties_add_text(
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
+	obs_property_t *browserOptions = obs_properties_add_text(
+		props, "browser_options", obs_module_text("browser_options"), OBS_TEXT_MULTILINE);
+	obs_property_text_set_monospace(browserOptions, true);
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
 	obs_properties_add_bool(props, "restart_when_active",
