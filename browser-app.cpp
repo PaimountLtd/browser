@@ -71,8 +71,8 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 
 void BrowserApp::AddFlag(bool flag) 
 {
-    std::lock_guard<std::mutex> guard(flag_mutex);
-    this->media_flags.push(flag);
+   std::lock_guard<std::mutex> guard(flag_mutex);
+   this->media_flags.push(flag);
 }
 
 void BrowserApp::OnBeforeChildProcessLaunch(
