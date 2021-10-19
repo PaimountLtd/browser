@@ -120,6 +120,8 @@ margin: 0px auto; \
 overflow: hidden; \
 }";
 
+static const char *default_browser_options = "";
+
 static void browser_source_get_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_string(settings, "url",
@@ -136,6 +138,7 @@ static void browser_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "is_media_flag", false);
 	obs_data_set_default_bool(settings, "restart_when_active", false);
 	obs_data_set_default_string(settings, "css", default_css);
+	obs_data_set_default_string(settings, "browser_options", "default_browser_options");
 
 #ifdef __APPLE__
 	obs_data_set_default_bool(settings, "reroute_audio", true);
@@ -220,6 +223,9 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *p = obs_properties_add_text(
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
+	obs_property_t *browserOptions = obs_properties_add_text(
+		props, "browser_options", obs_module_text("browser_options"), OBS_TEXT_MULTILINE);
+	obs_property_text_set_monospace(browserOptions, true);
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
 	obs_properties_add_bool(props, "restart_when_active",

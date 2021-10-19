@@ -472,6 +472,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		bool n_reroute;
 		std::string n_url;
 		std::string n_css;
+		std::string n_browser_options;
 
 		n_is_media_flag = obs_data_get_bool(settings, "is_media_flag");
 		n_is_local = obs_data_get_bool(settings, "is_local_file");
@@ -482,6 +483,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		n_shutdown = obs_data_get_bool(settings, "shutdown");
 		n_restart = obs_data_get_bool(settings, "restart_when_active");
 		n_css = obs_data_get_string(settings, "css");
+		n_browser_options(settings, "browser_options");
 		n_url = obs_data_get_string(settings,
 					    n_is_local ? "local_file" : "url");
 		n_reroute = obs_data_get_bool(settings, "reroute_audio");
@@ -529,7 +531,8 @@ void BrowserSource::Update(obs_data_t *settings)
 		if (n_is_local == is_local && n_width == width &&
 		    n_height == height && n_fps_custom == fps_custom &&
 		    n_fps == fps && n_shutdown == shutdown_on_invisible &&
-		    n_restart == restart && n_css == css && n_url == url &&
+		    n_restart == restart && n_css == css && 
+			n_url == url && n_browser_options == browser_options;
 		    n_reroute == reroute_audio && n_is_media_flag == is_media_flag) {
 			return;
 		}
@@ -545,6 +548,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		restart = n_restart;
 		css = n_css;
 		url = n_url;
+		browser_options = n_browser_options;
 
 		obs_source_set_audio_active(source, reroute_audio);
 	}
