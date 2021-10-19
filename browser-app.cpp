@@ -69,10 +69,16 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 #endif
 }
 
-void BrowserApp::AddFlag(bool flag) 
+void BrowserApp::UpdateCommandLineParameters(
+	std::map<std::string, std::string> params)
 {
-    std::lock_guard<std::mutex> guard(flag_mutex);
-    this->media_flags.push(flag);
+	parameters = params;
+}
+
+void BrowserApp::AddFlag(bool flag)
+{
+	std::lock_guard<std::mutex> guard(flag_mutex);
+	this->media_flags.push(flag);
 }
 
 void BrowserApp::OnBeforeChildProcessLaunch(
@@ -83,6 +89,28 @@ void BrowserApp::OnBeforeChildProcessLaunch(
 	command_line->AppendSwitchWithValue("parent_pid", pid);
 #else
 #endif
+	for (auto p : parameters) {
+		std::string param = p.first;
+		std::string value = p.second;
+
+		if (param.size() < 2)
+			continue;
+
+		if (param.substr(0, 2) == "--")
+			param = param.substr(2);
+
+		if (!(param.empty())) {
+			
+			if (!(value.empty())) {
+				command_line->AppendSwitchWithValue(
+					CefString(param),
+					CefString(value));
+			} else {
+				command_line->AppendSwitch(
+					CefString(param));
+			}
+		}
+	}
 
     std::lock_guard<std::mutex> guard(flag_mutex);
     if (this->media_flag != -1) {
@@ -129,16 +157,18 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 
 	std::lock_guard<std::mutex> guard(flag_mutex);
 	if (this->media_flag != -1) {
-			if (this->media_flag) {
-					command_line->AppendSwitchWithValue("enable-media-stream", "1");
-			}
-			this->media_flag = -1;
+		if (this->media_flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
+		this->media_flag = -1;
 	} else if (this->media_flags.size()) {
-			bool flag = media_flags.front();
-			media_flags.pop();
-			if (flag) {
-				command_line->AppendSwitchWithValue("enable-media-stream", "1");
-			}
+		bool flag = media_flags.front();
+		media_flags.pop();
+		if (flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
 	}
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");

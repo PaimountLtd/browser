@@ -27,7 +27,7 @@
 
 typedef std::function<void(CefRefPtr<CefBrowser>)> BrowserFunc;
 
-#if  defined(USE_UI_LOOP) && defined(WIN32)
+#if defined(USE_UI_LOOP) && defined(WIN32)
 #include <QObject>
 #include <QTimer>
 #include <deque>
@@ -78,12 +78,17 @@ class BrowserApp : public CefApp,
 	bool shared_texture_available;
 	CallbackMap callbackMap;
 	int callbackId;
+	std::map<std::string, std::string> parameters;
 
 public:
 	inline BrowserApp(bool shared_texture_available_ = false)
-		: shared_texture_available(shared_texture_available_), media_flag(-1)
+		: shared_texture_available(shared_texture_available_),
+		  media_flag(-1)
 	{
 	}
+
+	void
+	UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
 
 	void AddFlag(bool flag);
 	int media_flag;
