@@ -72,10 +72,9 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 void BrowserApp::UpdateCommandLineParameters(
 	std::map<std::string, std::string> params)
 {
-<<<<<<< HEAD
-   std::lock_guard<std::mutex> guard(flag_mutex);
-   this->media_flags.push(flag);
-=======
+	std::lock_guard<std::mutex> guard(flag_mutex);
+	this->media_flags.push(flag);
+
 	parameters = params;
 }
 
@@ -83,7 +82,6 @@ void BrowserApp::AddFlag(bool flag)
 {
 	std::lock_guard<std::mutex> guard(flag_mutex);
 	this->media_flags.push(flag);
->>>>>>> ad0d3da32cd11fa35e880b5863f5fd0d075df40d
 }
 
 void BrowserApp::OnBeforeChildProcessLaunch(
