@@ -10,11 +10,11 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Install clang format
-        run: |
-          sudo apt-get install -y clang-format-10
+#      - name: Install clang format
+#        run: |
+#          sudo apt-get install -y clang-format-10
 
-      - name: Check the Formatting
-        run: |
-          ./formatcode.sh
-          ./CI/check-format.sh
+#      - name: Check the Formatting
+#        run: |
+#          ./formatcode.sh
+#          ./CI/check-format.sh
