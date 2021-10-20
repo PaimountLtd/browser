@@ -80,15 +80,18 @@ class BrowserApp : public CefApp,
 	int callbackId;
 	std::map<std::string, std::string> parameters;
 
+	// This is what the browser was launched with orriginally. The user may change this
+	CefMainArgs launchArgs;	
+
 public:
-	inline BrowserApp(bool shared_texture_available_ = false)
+	inline BrowserApp( const CefMainArgs& args, bool shared_texture_available_ = false)
 		: shared_texture_available(shared_texture_available_),
-		  media_flag(-1)
+		launchArgs(args),
+		media_flag(-1)
 	{
 	}
 
-	void
-	UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
+	void UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
 
 	void AddFlag(bool flag);
 	int media_flag;
