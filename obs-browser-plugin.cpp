@@ -185,6 +185,9 @@ static bool on_browser_flags_modified(obs_properties_t *props, obs_property_t *p
 		parameters[parameter] = value;	// NOTE: this may be null
 	}
 
+//	if(app->UpdateCommandLineParameters(parameters))
+//		BrowserRestart
+
 	return true;
 }
 
@@ -218,10 +221,10 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *is_media_flag_prop =
 		obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");
 	obs_property_set_visible(is_media_flag_prop, false);
-	obs_property_t *browser_flag_prop =
+	obs_property_t *browser_options_prop =
 		obs_properties_add_text(props, "browser_options",
 			obs_module_text("browser_options"), OBS_TEXT_DEFAULT);
-	obs_property_set_modified_callback(browser_flag_prop, on_browser_flags_modified);
+	//obs_property_set_modified_callback(browser_options_prop, on_browser_flags_modified);
 
 	if (bs && !bs->url.empty()) {
 		const char *slash;
@@ -263,6 +266,9 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *p = obs_properties_add_text(
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
+	obs_property_t* browser_options_property = obs_properties_add_text(
+		props, "browser_settings", obs_module_text("browser_settings"), OBS_TEXT_MULTILINE);
+	obs_property_text_set_monospace(browser_options_property, true);
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
 	obs_properties_add_bool(props, "restart_when_active",
@@ -332,7 +338,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 		blog(LOG_INFO, "BrowserInit - 1 Finding browser executable");
 		string path = obs_get_module_binary_path(obs_current_module());
-		path = path.substr(0, path.find_last_of('/'));
+		path = path.substr(0, path.find_last_of('/') + 1);
 		path += "//obs-browser-page";
 #ifdef _WIN32
 		path += ".exe";

@@ -44,7 +44,12 @@ using namespace json11;
 extern bool QueueCEFTask(std::function<void()> task);
 
 static mutex browser_list_mutex;
+static mutex browser_restarting;
+
 static BrowserSource *first_browser = nullptr;
+
+// This is to prevent the browsers from starting while shutting down and other potentially bad things.
+
 
 static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
 {
@@ -142,99 +147,125 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 	}
 }
 
+void BrowserSource::RestartBrowser()
+{
+	blog(LOG_INFO, "Browser is restarting");
+
+	const std::lock_guard<std::mutex> restartGuard(browser_restarting);
+	{
+		// Mutext here to protect if we're in a bad state already
+		const std::lock_guard<std::mutex> lock(browser_list_mutex);
+		if (cefBrowser == nullptr)
+			return;
+	}
+
+	DestroyBrowser();
+	CreateBrowser();
+
+}
+
 bool BrowserSource::CreateBrowser()
 {
+	// Lock_guard takes care of try catch exceptions and other potentional deadlock conditions.
+	// This is scoped to this function only and will not attempt tp create the browser twice
+	const std::lock_guard<std::mutex> lock (browser_list_mutex);
+
 #ifdef WIN32
-	return QueueCEFTask([this]() {
+		return QueueCEFTask([this]() {
 #endif
 #if defined(USE_UI_LOOP) && defined(__APPLE__)
-		ExecuteTask([this]() {
+			ExecuteTask([this]() {
 #endif
 #if SHARED_TEXTURE_SUPPORT_ENABLED
-			if (hwaccel) {
-				obs_enter_graphics();
-				tex_sharing_avail =
-					gs_shared_texture_available();
-				obs_leave_graphics();
-			}
+				if (hwaccel) {
+					obs_enter_graphics();
+					tex_sharing_avail =
+						gs_shared_texture_available();
+					obs_leave_graphics();
+				}
 #else
-	bool hwaccel = false;
+				bool hwaccel = false;
 #endif
-			CefRefPtr<BrowserClient> browserClient =
-				new BrowserClient(this,
-						  hwaccel && tex_sharing_avail,
-						  reroute_audio);
-			CefWindowInfo windowInfo;
+				CefRefPtr<BrowserClient> browserClient =
+					new BrowserClient(this,
+						hwaccel && tex_sharing_avail,
+						reroute_audio);
+				CefWindowInfo windowInfo;
 #if CHROME_VERSION_BUILD < 3071
-			windowInfo.transparent_painting_enabled = true;
+				windowInfo.transparent_painting_enabled = true;
 #endif
-			windowInfo.width = width;
-			windowInfo.height = height;
-			windowInfo.windowless_rendering_enabled = true;
+				windowInfo.width = width;
+				windowInfo.height = height;
+				windowInfo.windowless_rendering_enabled = true;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-			windowInfo.shared_texture_enabled = hwaccel;
+				windowInfo.shared_texture_enabled = hwaccel;
 #endif
 
-			CefBrowserSettings cefBrowserSettings;
+				CefBrowserSettings cefBrowserSettings;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
-			if (!fps_custom) {
-				windowInfo.external_begin_frame_enabled = true;
-				cefBrowserSettings.windowless_frame_rate = 0;
-			} else {
-				cefBrowserSettings.windowless_frame_rate = fps;
-			}
+				if (!fps_custom) {
+					windowInfo.external_begin_frame_enabled = true;
+					cefBrowserSettings.windowless_frame_rate = 0;
+				}
+				else {
+					cefBrowserSettings.windowless_frame_rate = fps;
+				}
 #else
-			double video_fps = obs_get_active_fps();
-			cefBrowserSettings.windowless_frame_rate =
-				(fps_custom) ? fps : video_fps;
+				double video_fps = obs_get_active_fps();
+				cefBrowserSettings.windowless_frame_rate =
+					(fps_custom) ? fps : video_fps;
 #endif
 #else
-	cefBrowserSettings.windowless_frame_rate = fps;
+				cefBrowserSettings.windowless_frame_rate = fps;
 #endif
 
-			cefBrowserSettings.default_font_size = 16;
-			cefBrowserSettings.default_fixed_font_size = 16;
+				cefBrowserSettings.default_font_size = 16;
+				cefBrowserSettings.default_fixed_font_size = 16;
 
 #if ENABLE_LOCAL_FILE_URL_SCHEME
-			if (is_local) {
-				/* Disable web security for file:// URLs to allow
-			 * local content access to remote APIs */
-				cefBrowserSettings.web_security =
-					STATE_DISABLED;
-			}
+				if (is_local) {
+					/* Disable web security for file:// URLs to allow
+				 * local content access to remote APIs */
+					cefBrowserSettings.web_security =
+						STATE_DISABLED;
+				}
 #endif
-			cefBrowser = CefBrowserHost::CreateBrowserSync(
-				windowInfo, browserClient, url,
-				cefBrowserSettings,
+				cefBrowser = CefBrowserHost::CreateBrowserSync(
+					windowInfo, browserClient, url,
+					cefBrowserSettings,
 #if CHROME_VERSION_BUILD >= 3770
-				CefRefPtr<CefDictionaryValue>(),
+					CefRefPtr<CefDictionaryValue>(),
 #endif
-				nullptr);
+					nullptr);
 
-			if (cefBrowser) {
-				blog(LOG_INFO, "CreateBrowserSync - success");
-			} else {
-				blog(LOG_INFO, "CreateBrowserSync - fail");
-			}
+				if (cefBrowser) {
+					blog(LOG_INFO, "CreateBrowserSync - success");
+				}
+				else {
+					blog(LOG_INFO, "CreateBrowserSync - fail");
+				}
 #if CHROME_VERSION_BUILD >= 3683
-			if (reroute_audio)
-				cefBrowser->GetHost()->SetAudioMuted(true);
+				if (reroute_audio)
+					cefBrowser->GetHost()->SetAudioMuted(true);
 #endif
 
-			SendBrowserVisibility(cefBrowser, is_showing);
-		});
+				SendBrowserVisibility(cefBrowser, is_showing);
+				});
 #if defined(USE_UI_LOOP) && defined(__APPLE__)
-		return true;
+			return true;
 #endif
+
 }
 
 void BrowserSource::DestroyBrowser(bool async)
 {
 		ExecuteOnBrowser(
 			[](CefRefPtr<CefBrowser> cefBrowser) {
+				const std::lock_guard<std::mutex> lock(browser_list_mutex);
+
 				CefRefPtr<CefClient> client =
 					cefBrowser->GetHost()->GetClient();
 				BrowserClient *bc =
@@ -486,6 +517,7 @@ void BrowserSource::Update(obs_data_t *settings)
 			bool n_reroute;
 			std::string n_url;
 			std::string n_css;
+			std::string n_browser_options;
 
 			n_is_media_flag =
 				obs_data_get_bool(settings, "is_media_flag");
@@ -500,6 +532,7 @@ void BrowserSource::Update(obs_data_t *settings)
 			n_restart = obs_data_get_bool(settings,
 						      "restart_when_active");
 			n_css = obs_data_get_string(settings, "css");
+			n_browser_options = obs_data_get_string(settings, "browser_options");
 			n_url = obs_data_get_string(
 				settings, n_is_local ? "local_file" : "url");
 			n_reroute =
@@ -552,7 +585,7 @@ void BrowserSource::Update(obs_data_t *settings)
 			    n_height == height && n_fps_custom == fps_custom &&
 			    n_fps == fps &&
 			    n_shutdown == shutdown_on_invisible &&
-			    n_restart == restart && n_css == css &&
+			    n_restart == restart && n_css == css && n_browser_options == browser_options &&
 			    n_url == url && n_reroute == reroute_audio &&
 			    n_is_media_flag == is_media_flag) {
 				return;
@@ -568,6 +601,7 @@ void BrowserSource::Update(obs_data_t *settings)
 			reroute_audio = n_reroute;
 			restart = n_restart;
 			css = n_css;
+			browser_options = n_browser_options;
 			url = n_url;
 
 			obs_source_set_audio_active(source, reroute_audio);

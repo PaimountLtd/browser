@@ -91,7 +91,7 @@ public:
 	{
 	}
 
-	void UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
+	bool UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
 
 	void AddFlag(bool flag);
 	int media_flag;
@@ -130,6 +130,8 @@ public:
 	QTimer frameTimer;
 #endif
 #endif
+
+	void RestartBrowser();
 
 #if !ENABLE_WASHIDDEN
 	std::unordered_map<int, bool> browserVis;

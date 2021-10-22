@@ -54,7 +54,7 @@ struct BrowserSource {
 
 	std::string url;
 	std::string css;
-	std::string browser_settings;
+	std::string browser_options;
 	gs_texture_t *texture = nullptr;
 	int width = 0;
 	int height = 0;
@@ -66,6 +66,7 @@ struct BrowserSource {
 	bool is_media_flag = false;
 	bool first_update = true;
 	bool reroute_audio = true;
+
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	bool reset_frame = false;
 #endif
@@ -86,6 +87,7 @@ struct BrowserSource {
 	bool CreateBrowser();
 	void DestroyBrowser(bool async = false);
 	void ExecuteOnBrowser(BrowserFunc func, bool async = false);
+	void RestartBrowser();
 
 	/* ---------------------------- */
 

@@ -69,10 +69,27 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 #endif
 }
 
-void BrowserApp::UpdateCommandLineParameters(
+// Returns if the browser needs to be restarted or not. Returning
+// true means the browser should be restarted.
+bool BrowserApp::UpdateCommandLineParameters(
 	std::map<std::string, std::string> params)
 {
+	if (params.size() != parameters.size())
+		return true;
+
+	for (std::pair<std::string,std::string> p : params)
+	{
+		auto location = parameters.find(p.first);
+		if (location == parameters.end())
+			return true;
+
+		if (p.second != location->second)
+			return true;
+	}
+
 	parameters = params;
+
+	return false;
 }
 
 void BrowserApp::AddFlag(bool flag)
