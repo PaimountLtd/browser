@@ -45,6 +45,9 @@
 
 using namespace json11;
 
+// we can only have a single instance of the browser, so parameters are shared between them. 
+std::map<std::string, std::string> parameters;
+
 CefRefPtr<CefRenderProcessHandler> BrowserApp::GetRenderProcessHandler()
 {
 	return this;
@@ -71,23 +74,29 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 
 // Returns if the browser needs to be restarted or not. Returning
 // true means the browser should be restarted.
-bool BrowserApp::UpdateCommandLineParameters(
+bool BrowserApp::TryUpdateCommandLineParameters(
 	std::map<std::string, std::string> params)
 {
+	// This will tell if we need to restart the browser
+	bool ret = false;
+
 	if (params.size() != parameters.size())
-		return true;
+		ret = true;
+	else {
+		for (std::pair<std::string, std::string> p : params)
+		{
+			auto location = parameters.find(p.first);
+			if (location == parameters.end())
+				ret = true;
 
-	for (std::pair<std::string,std::string> p : params)
-	{
-		auto location = parameters.find(p.first);
-		if (location == parameters.end())
-			return true;
-
-		if (p.second != location->second)
-			return true;
+			if (p.second != location->second)
+				ret = true;
+		}
 	}
 
 	parameters = params;
+
+	//RestartBrowser();
 
 	return false;
 }

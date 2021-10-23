@@ -78,7 +78,6 @@ class BrowserApp : public CefApp,
 	bool shared_texture_available;
 	CallbackMap callbackMap;
 	int callbackId;
-	std::map<std::string, std::string> parameters;
 
 	// This is what the browser was launched with orriginally. The user may change this
 	CefMainArgs launchArgs;	
@@ -91,7 +90,8 @@ public:
 	{
 	}
 
-	bool UpdateCommandLineParameters(std::map<std::string, std::string> parameters);
+	// The browser will not be restarted if the command line parameters have not changed.
+	static bool TryUpdateCommandLineParameters(std::map<std::string, std::string> parameters);
 
 	void AddFlag(bool flag);
 	int media_flag;
@@ -131,7 +131,7 @@ public:
 #endif
 #endif
 
-	void RestartBrowser();
+	//void RestartBrowser();
 
 #if !ENABLE_WASHIDDEN
 	std::unordered_map<int, bool> browserVis;

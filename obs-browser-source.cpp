@@ -170,6 +170,8 @@ bool BrowserSource::CreateBrowser()
 	// This is scoped to this function only and will not attempt tp create the browser twice
 	const std::lock_guard<std::mutex> lock (browser_list_mutex);
 
+	BrowserApp::TryUpdateCommandLineParameters(this->additionalCommandLineParameters);
+
 #ifdef WIN32
 		return QueueCEFTask([this]() {
 #endif
@@ -533,6 +535,7 @@ void BrowserSource::Update(obs_data_t *settings)
 						      "restart_when_active");
 			n_css = obs_data_get_string(settings, "css");
 			n_browser_options = obs_data_get_string(settings, "browser_options");
+			
 			n_url = obs_data_get_string(
 				settings, n_is_local ? "local_file" : "url");
 			n_reroute =

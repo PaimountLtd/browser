@@ -267,7 +267,7 @@ static obs_properties_t *browser_source_get_properties(void *data)
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
 	obs_property_t* browser_options_property = obs_properties_add_text(
-		props, "browser_settings", obs_module_text("browser_settings"), OBS_TEXT_MULTILINE);
+		props, "browser_options", obs_module_text("browser_options"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(browser_options_property, true);
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
