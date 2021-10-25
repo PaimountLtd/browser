@@ -46,7 +46,7 @@
 using namespace json11;
 
 // we can only have a single instance of the browser, so parameters are shared between them. 
-std::map<std::string, std::string> parameters;
+static std::map<std::string, std::string> parameters;
 
 CefRefPtr<CefRenderProcessHandler> BrowserApp::GetRenderProcessHandler()
 {
@@ -77,28 +77,8 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 bool BrowserApp::TryUpdateCommandLineParameters(
 	std::map<std::string, std::string> params)
 {
-	// This will tell if we need to restart the browser
-	bool ret = false;
-
-	if (params.size() != parameters.size())
-		ret = true;
-	else {
-		for (std::pair<std::string, std::string> p : params)
-		{
-			auto location = parameters.find(p.first);
-			if (location == parameters.end())
-				ret = true;
-
-			if (p.second != location->second)
-				ret = true;
-		}
-	}
-
 	parameters = params;
-
-	//RestartBrowser();
-
-	return false;
+	return true;
 }
 
 void BrowserApp::AddFlag(bool flag)
@@ -110,34 +90,13 @@ void BrowserApp::AddFlag(bool flag)
 void BrowserApp::OnBeforeChildProcessLaunch(
 	CefRefPtr<CefCommandLine> command_line)
 {
+	// There are two processes in CEF V1 (the one we're using). There's
+	// a server and a child process. The server is launched once and the
+	// child process is launched for new windows/tabs
 #ifdef _WIN32
 	std::string pid = std::to_string(GetCurrentProcessId());
 	command_line->AppendSwitchWithValue("parent_pid", pid);
-#else
 #endif
-	for (auto p : parameters) {
-		std::string param = p.first;
-		std::string value = p.second;
-
-		if (param.size() < 2)
-			continue;
-
-		if (param.substr(0, 2) == "--")
-			param = param.substr(2);
-
-		if (!(param.empty())) {
-			
-			if (!(value.empty())) {
-				command_line->AppendSwitchWithValue(
-					CefString(param),
-					CefString(value));
-			} else {
-				command_line->AppendSwitch(
-					CefString(param));
-			}
-		}
-	}
-
     std::lock_guard<std::mutex> guard(flag_mutex);
     if (this->media_flag != -1) {
         if (this->media_flag) {
@@ -152,10 +111,22 @@ void BrowserApp::OnBeforeChildProcessLaunch(
             command_line->AppendSwitchWithValue("enable-media-stream", "1");
         }
     }
+
+    for (auto p : parameters) {
+	    if (p.first == "")
+		    continue;
+	    if (p.second == "") {
+		    command_line->AppendSwitchWithValue(p.first, p.second);
+	    }
+	    else
+		    command_line->AppendSwitch(p.first);
+    }
+
+    //CefBrowserProcessHandler::OnBeforeChildProcessLaunch(command_line);
 }
 
 void BrowserApp::OnBeforeCommandLineProcessing(
-	const CefString &, CefRefPtr<CefCommandLine> command_line)
+	const CefString & processType, CefRefPtr<CefCommandLine> command_line)
 {
 	if (!shared_texture_available) {
 		bool enableGPU = command_line->HasSwitch("enable-gpu");
@@ -196,9 +167,20 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 				"enable-media-stream", "1");
 		}
 	}
+
+	for (auto p : parameters) {
+		if (p.first == "")
+			continue;
+		if (p.second == "") {
+			command_line->AppendSwitchWithValue(p.first, p.second);
+		}
+		else
+			command_line->AppendSwitch(p.first);
+	}
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");
 #endif
+	//CefApp::OnBeforeCommandLineProcessing(processType, command_line);
 }
 
 void BrowserApp::OnContextCreated(CefRefPtr<CefBrowser> browser,

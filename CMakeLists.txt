@@ -53,6 +53,11 @@ set(obs-browser_LIBRARIES
 #	obs-frontend-api
 	)
 
+if(WIN32)
+list(APPEND obs-browser_LIBRARIES
+	Kernel32)
+endif()
+
 list(APPEND obs-browser_LIBRARIES
 	${CEF_LIBRARIES})
 
@@ -120,6 +125,11 @@ if (APPLE)
 endif()
 
 if(BROWSER_PANEL_SUPPORT_ENABLED)
+	if(DEFINED QTDIR)
+		list(APPEND CMAKE_PREFIX_PATH "${QTDIR}")
+	elseif(DEFINED ENV{QTDIR})
+		list(APPEND CMAKE_PREFIX_PATH "$ENV{QTDIR}")
+	endif()
 	list(APPEND obs-browser_SOURCES
 		panel/browser-panel.cpp
 		panel/browser-panel-client.cpp

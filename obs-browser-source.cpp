@@ -16,7 +16,10 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include "obs.h"
+#include "obs-data.h"
 #include "obs-browser-source.hpp"
+#include "browser-app.hpp"
 #include "browser-client.hpp"
 #include "browser-scheme.hpp"
 #include "wide-string.hpp"
@@ -26,6 +29,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <map>
 
 #ifdef __linux__
 #include "linux-keyboard-helpers.hpp"
@@ -49,6 +53,8 @@ static mutex browser_restarting;
 static BrowserSource *first_browser = nullptr;
 
 // This is to prevent the browsers from starting while shutting down and other potentially bad things.
+
+std::map<std::string, std::string> GetNewBrowserOptions(std::string options);
 
 
 static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
@@ -159,17 +165,24 @@ void BrowserSource::RestartBrowser()
 			return;
 	}
 
+	obs_data_t* settings = obs_source_get_settings(this->source);
+
 	DestroyBrowser();
-	CreateBrowser();
+	CreateBrowser(settings);
 
 }
 
-bool BrowserSource::CreateBrowser()
+bool BrowserSource::CreateBrowser(obs_data_t* settings)
 {
 	// Lock_guard takes care of try catch exceptions and other potentional deadlock conditions.
 	// This is scoped to this function only and will not attempt tp create the browser twice
 	const std::lock_guard<std::mutex> lock (browser_list_mutex);
 
+	if (settings != NULL) {
+		char* options = (char*)obs_data_get_string(settings, "browser_options");
+		this->additionalCommandLineParameters = GetNewBrowserOptions(options);
+	}
+	
 	BrowserApp::TryUpdateCommandLineParameters(this->additionalCommandLineParameters);
 
 #ifdef WIN32
@@ -203,7 +216,6 @@ bool BrowserSource::CreateBrowser()
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 				windowInfo.shared_texture_enabled = hwaccel;
 #endif
-
 				CefBrowserSettings cefBrowserSettings;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
@@ -623,8 +635,16 @@ void BrowserSource::Update(obs_data_t *settings)
 
 void BrowserSource::Tick()
 {
-		if (create_browser && CreateBrowser())
-			create_browser = false;
+	obs_data_t* settings = NULL;
+	if(this->source != NULL) {
+		// copy the settings we we're using before. Note: these may have
+		// changed and that's why we're restarting the client.
+		settings = obs_source_get_settings(this->source);
+	}
+
+	if (create_browser && CreateBrowser(settings))
+		create_browser = false;
+
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 		if (!fps_custom)
 			reset_frame = true;
@@ -709,4 +729,83 @@ void DispatchJSEvent(std::string eventName, std::string jsonString,
 			ExecuteOnAllBrowsers(jsEvent);
 		else
 			ExecuteOnBrowser(jsEvent, browser);
+}
+
+std::map<std::string, std::string> GetNewBrowserOptions(std::string token_string)
+{
+	// This assums pretty well formed parameters - should probably do some error checking too
+
+	std::list<std::string> parameterValueList;
+	std::map<std::string, std::string> parameters;
+
+	// Break everything up into --token=value or --token
+	size_t pos = 0;
+	std::string token;
+	while ((pos = token_string.find(' ')) != std::string::npos) {
+		if (pos == 0)
+			continue;
+
+		token = token_string.substr(0, pos);
+		parameterValueList.push_back(token);
+		token_string.erase(0, pos + 1);	// includes the ' '
+	}
+	if (token_string.length() > 0)
+		parameterValueList.push_back(token_string);
+
+	// Clean up the values a bit so we don't have the -- because CEF doesn't want it
+	for (auto tv : parameterValueList)
+	{
+		size_t paramStartPos = 0;
+		size_t paramEndPos = string::npos;
+
+		// CEF doesn't seem to want this
+		/*if (tv._Starts_with("--"))
+		{
+			paramStartPos = 2;
+		}
+		else if (tv._Starts_with("-"))
+		{
+			paramStartPos = 1;
+		}*/
+
+		paramEndPos = tv.find_first_of('=');
+		if (paramEndPos != string::npos)
+		{
+			paramEndPos += 1;	// don't include '='
+		}
+
+		string paramString;
+		string valueString;
+
+
+
+		if (paramEndPos == std::string::npos)
+		{
+			paramEndPos = tv.length() - paramStartPos;
+			paramString = tv.substr(paramStartPos, paramEndPos);
+
+			// extra leading whitespace 
+			if (paramString.length() == 0)
+				continue;
+
+			parameters[paramString] = "";
+			blog(LOG_INFO, "Adding CEF parameter %s", paramString.c_str());
+			continue;	// no value to find			
+		}
+		else
+		{
+			paramString = tv.substr(paramStartPos);
+
+			// extra leading whitespace 
+			if (paramString.length() == 0)
+				continue;
+
+			string valueString = tv.substr(paramStartPos);
+			parameters[paramString] = valueString;
+
+			blog(LOG_INFO, "Adding CEF parameter %s = %s", parameters[valueString].c_str(), valueString.c_str());
+		}
+	}
+
+	return parameters;
 }

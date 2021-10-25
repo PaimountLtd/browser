@@ -80,7 +80,9 @@ class BrowserApp : public CefApp,
 	int callbackId;
 
 	// This is what the browser was launched with orriginally. The user may change this
-	CefMainArgs launchArgs;	
+	CefMainArgs launchArgs;
+
+	// These change for each child instance process
 
 public:
 	inline BrowserApp( const CefMainArgs& args, bool shared_texture_available_ = false)

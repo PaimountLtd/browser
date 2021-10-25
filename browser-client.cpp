@@ -458,7 +458,7 @@ void BrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame,
 		return;
 	}
 
-	if (frame->IsMain() && bs->css.length()) {
+	if (frame->IsMain()&& bs->css.length()) {
 		std::string uriEncodedCSS =
 			CefURIEncode(bs->css, false).ToString();
 

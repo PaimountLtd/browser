@@ -158,39 +158,6 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 
 	return true;
 }
-
-static bool on_browser_flags_modified(obs_properties_t *props, obs_property_t *property,
-				      obs_data_t *settings)
-{
-	UNREFERENCED_PARAMETER(props);
-	UNREFERENCED_PARAMETER(property);
-
-	// The complete list is here https: //peter.sh/experiments/chromium-command-line-switches/
-	// 
-	// Parse out the browser options to pass into chrome
-	std::map<string, string> parameters;
-
-	// I'm pretty sure getting rid of the constantness is just for ref counting, so we'll
-	// be done long before the browser goes away.
-	char* options = (char*)obs_data_get_string(settings, "browser_options");
-
-	char *token = strtok(options, " ");
-	while (token) {
-		blog(LOG_INFO, "Adding CEF parameter %s", token);
-
-		// Some have values, some don't. If we don't have a value, the second entry in the map will be null
-		char *parameter = strtok(token, "=");
-		char *value = strtok(token, "=");
-
-		parameters[parameter] = value;	// NOTE: this may be null
-	}
-
-//	if(app->UpdateCommandLineParameters(parameters))
-//		BrowserRestart
-
-	return true;
-}
-
 static bool on_browser_media_flag_modified(obs_properties_t* props, obs_property_t* property,
 	obs_data_t* settings)
 {
@@ -219,12 +186,11 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *prop = obs_properties_add_bool(
 		props, "is_local_file", obs_module_text("LocalFile"));
 	obs_property_t *is_media_flag_prop =
-		obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");
+		obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");	
 	obs_property_set_visible(is_media_flag_prop, false);
 	obs_property_t *browser_options_prop =
 		obs_properties_add_text(props, "browser_options",
 			obs_module_text("browser_options"), OBS_TEXT_DEFAULT);
-	//obs_property_set_modified_callback(browser_options_prop, on_browser_flags_modified);
 
 	if (bs && !bs->url.empty()) {
 		const char *slash;
@@ -330,7 +296,7 @@ static obs_missing_files_t *browser_source_missingfiles(void *data)
 
 static CefRefPtr<BrowserApp> app;
 
-static void BrowserInit(obs_data_t *settings_obs)
+static void BrowserInit(obs_data_t *settings_obs)	
 {
 	blog(LOG_INFO, "BrowserInit - 0 Starting Browser Initialization");
 #if defined(__APPLE__) && defined(USE_UI_LOOP)
@@ -439,7 +405,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		}
 #endif
 		blog(LOG_INFO, "BrowserInit - 7 - Creating BrowserApp with hardware acceleration to %s", hwaccel ? "true" : "false");
-		app = new BrowserApp(args, hwaccel);
+ 		app = new BrowserApp(args, hwaccel);
 
 #ifdef _WIN32
 

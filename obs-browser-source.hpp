@@ -84,7 +84,7 @@ struct BrowserSource {
 
 	/* ---------------------------- */
 
-	bool CreateBrowser();
+	bool CreateBrowser(obs_data_t* settings);
 	void DestroyBrowser(bool async = false);
 	void ExecuteOnBrowser(BrowserFunc func, bool async = false);
 	void RestartBrowser();
