@@ -18,6 +18,11 @@
 
 #pragma once
 
+#ifndef __OBS_BROWSER_SOURCE_H__
+#define __OBS_BROWSER_SOURCE_H__
+
+#include "obs-browser-client.hpp"
+
 #include <obs-module.h>
 
 #include "cef-headers.hpp"
@@ -40,7 +45,7 @@ struct AudioStream {
 };
 #endif
 
-extern bool hwaccel;
+extern BrowserGRPCClient* bc;
 
 struct BrowserSource {
 	BrowserSource **p_prev_next = nullptr;
@@ -69,6 +74,17 @@ struct BrowserSource {
 	bool reset_frame = false;
 #endif
 	bool is_showing = false;
+
+#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
+#if USE_TEXTURE_COPY
+	gs_texture_t *texture = nullptr;
+#endif
+#ifdef _WIN32
+	void *last_handle = INVALID_HANDLE_VALUE;
+#elif defined(__APPLE__)
+	void *last_handle = nullptr;
+#endif
+#endif
 
 	inline void DestroyTextures()
 	{
@@ -119,3 +135,4 @@ struct BrowserSource {
 	inline void SignalBeginFrame();
 #endif
 };
+#endif

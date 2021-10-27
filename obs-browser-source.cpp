@@ -144,108 +144,34 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 
 bool BrowserSource::CreateBrowser()
 {
-#ifdef WIN32
-	return QueueCEFTask([this]() {
-#endif
-#if defined(USE_UI_LOOP) && defined(__APPLE__)
-	ExecuteTask([this]() {
-#endif
-#if SHARED_TEXTURE_SUPPORT_ENABLED
-		if (hwaccel) {
-			obs_enter_graphics();
-			tex_sharing_avail = gs_shared_texture_available();
-			obs_leave_graphics();
-		}
-#else
-		bool hwaccel = false;
-#endif
-	CefRefPtr<BrowserClient> browserClient = new BrowserClient(this, hwaccel && tex_sharing_avail, reroute_audio);
-	CefWindowInfo windowInfo;
-#if CHROME_VERSION_BUILD < 3071
-		windowInfo.transparent_painting_enabled = true;
-#endif
-		windowInfo.width = width;
-		windowInfo.height = height;
-		windowInfo.windowless_rendering_enabled = true;
-
-#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-		windowInfo.shared_texture_enabled = hwaccel;
-#endif
-
-		CefBrowserSettings cefBrowserSettings;
-
-#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-#ifdef _WIN32
-		if (!fps_custom) {
-			windowInfo.external_begin_frame_enabled = true;
-			cefBrowserSettings.windowless_frame_rate = 0;
-		} else {
-			cefBrowserSettings.windowless_frame_rate = fps;
-		}
-#else
-		double video_fps = obs_get_active_fps();
-		cefBrowserSettings.windowless_frame_rate =
-			(fps_custom) ? fps : video_fps;
-#endif
-#else
-		cefBrowserSettings.windowless_frame_rate = fps;
-#endif
-
-		cefBrowserSettings.default_font_size = 16;
-		cefBrowserSettings.default_fixed_font_size = 16;
-
-#if ENABLE_LOCAL_FILE_URL_SCHEME
-		if (is_local) {
-			/* Disable web security for file:// URLs to allow
-			 * local content access to remote APIs */
-			cefBrowserSettings.web_security = STATE_DISABLED;
-		}
-#endif
-		cefBrowser = CefBrowserHost::CreateBrowserSync(
-			windowInfo, browserClient, url, cefBrowserSettings,
-#if CHROME_VERSION_BUILD >= 3770
-			CefRefPtr<CefDictionaryValue>(),
-#endif
-            nullptr);
-    
-		if (cefBrowser) {
-			blog(LOG_INFO, "CreateBrowserSync - success");
-		} else {
-			blog(LOG_INFO, "CreateBrowserSync - fail");
-		}
-#if CHROME_VERSION_BUILD >= 3683
-		if (reroute_audio)
-			cefBrowser->GetHost()->SetAudioMuted(true);
-#endif
-
-		SendBrowserVisibility(cefBrowser, is_showing);
-	});
-#if defined(USE_UI_LOOP) && defined(__APPLE__)
+	bc->CreateBrowserSource(
+		hwaccel, reroute_audio, width, height,
+		fps, fps_custom, obs_get_active_fps(), url
+	);
 	return true;
-#endif
 }
 
 void BrowserSource::DestroyBrowser(bool async)
 {
-	ExecuteOnBrowser(
-		[](CefRefPtr<CefBrowser> cefBrowser) {
-			CefRefPtr<CefClient> client =
-				cefBrowser->GetHost()->GetClient();
-			BrowserClient *bc =
-				reinterpret_cast<BrowserClient *>(client.get());
-			if (bc) {
-				bc->bs = nullptr;
-			}
+	// ExecuteOnBrowser(
+	// 	[](CefRefPtr<CefBrowser> cefBrowser) {
+	// 		CefRefPtr<CefClient> client =
+	// 			cefBrowser->GetHost()->GetClient();
+	// 		BrowserClient *bc =
+	// 			reinterpret_cast<BrowserClient *>(client.get());
+	// 		if (bc) {
+	// 			bc->bs = nullptr;
+	// 		}
 
-			/*
-		 * This stops rendering
-		 * http://magpcss.org/ceforum/viewtopic.php?f=6&t=12079
-		 * https://bitbucket.org/chromiumembedded/cef/issues/1363/washidden-api-got-broken-on-branch-2062)
-		 */
-			cefBrowser->GetHost()->WasHidden(true);
-			cefBrowser->GetHost()->CloseBrowser(true);
-		},
-		async);
+	// 		/*
+	// 	 * This stops rendering
+	// 	 * http://magpcss.org/ceforum/viewtopic.php?f=6&t=12079
+	// 	 * https://bitbucket.org/chromiumembedded/cef/issues/1363/washidden-api-got-broken-on-branch-2062)
+	// 	 */
+	// 		cefBrowser->GetHost()->WasHidden(true);
+	// 		cefBrowser->GetHost()->CloseBrowser(true);
+	// 	},
+	// 	async);
 
 	cefBrowser = nullptr;
 }
@@ -394,63 +320,43 @@ void BrowserSource::SetShowing(bool showing)
 			DestroyBrowser(true);
 		}
 	} else {
-		ExecuteOnBrowser(
-			[=](CefRefPtr<CefBrowser> cefBrowser) {
-				CefRefPtr<CefProcessMessage> msg =
-					CefProcessMessage::Create("Visibility");
-				CefRefPtr<CefListValue> args =
-					msg->GetArgumentList();
-				args->SetBool(0, showing);
-				SendBrowserProcessMessage(cefBrowser,
-							  PID_RENDERER, msg);
-			},
-			true);
-		Json json = Json::object{{"visible", showing}};
-		DispatchJSEvent("obsSourceVisibleChanged", json.dump(), this);
+		bc->SetShowing(showing);
+
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 		if (showing && !fps_custom) {
 			reset_frame = false;
 		}
 #endif
-
-		SendBrowserVisibility(cefBrowser, showing);
 	}
 }
 
 void BrowserSource::SetActive(bool active)
 {
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			CefRefPtr<CefProcessMessage> msg =
-				CefProcessMessage::Create("Active");
-			CefRefPtr<CefListValue> args = msg->GetArgumentList();
-			args->SetBool(0, active);
-			SendBrowserProcessMessage(cefBrowser, PID_RENDERER,
-						  msg);
-		},
-		true);
-	Json json = Json::object{{"active", active}};
-	DispatchJSEvent("obsSourceActiveChanged", json.dump(), this);
+	bc->SetActive(active);
 }
 
 void BrowserSource::Refresh()
 {
-	ExecuteOnBrowser(
-		[](CefRefPtr<CefBrowser> cefBrowser) {
-			cefBrowser->ReloadIgnoreCache();
-		},
-		true);
+	bc->Refresh();
 }
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
 inline void BrowserSource::SignalBeginFrame()
 {
 	if (reset_frame) {
-		ExecuteOnBrowser(
-			[](CefRefPtr<CefBrowser> cefBrowser) {
-				cefBrowser->GetHost()->SendExternalBeginFrame();
-			},
-			true);
+		void* shared_handle = bc->SignalBeginFrame();
+		if (shared_handle && this->last_handle != shared_handle) {
+			obs_enter_graphics();
+
+			gs_texture_destroy(this->texture);
+			this->texture = nullptr;
+
+			this->texture = gs_texture_open_shared(
+				(uint32_t)(uintptr_t)shared_handle);
+
+			obs_leave_graphics();
+			last_handle = shared_handle;
+		}
 
 		reset_frame = false;
 	}

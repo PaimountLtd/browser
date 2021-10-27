@@ -20,11 +20,11 @@
 
 #include <graphics/graphics.h>
 #include "cef-headers.hpp"
-#include "browser-config.h"
+// #include "browser-config.h"
 
 #define USE_TEXTURE_COPY 0
 
-struct BrowserSource;
+// struct BrowserSource;
 
 class BrowserClient : public CefClient,
 		      public CefDisplayHandler,
@@ -36,7 +36,15 @@ class BrowserClient : public CefClient,
 #endif
 		      public CefLoadHandler {
 
-#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
+	bool sharing_available = false;
+	bool reroute_audio = true;
+
+public:
+	// BrowserSource *bs;
+	CefRect popupRect;
+	CefRect originalPopupRect;
+
+// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #if USE_TEXTURE_COPY
 	gs_texture_t *texture = nullptr;
 #endif
@@ -45,14 +53,7 @@ class BrowserClient : public CefClient,
 #elif defined(__APPLE__)
 	void *last_handle = nullptr;
 #endif
-#endif
-	bool sharing_available = false;
-	bool reroute_audio = true;
-
-public:
-	BrowserSource *bs;
-	CefRect popupRect;
-	CefRect originalPopupRect;
+// #endif
 
 #if CHROME_VERSION_BUILD >= 4103
 	int sample_rate;
@@ -60,11 +61,17 @@ public:
 	ChannelLayout channel_layout;
 	int frames_per_buffer;
 #endif
-	inline BrowserClient(BrowserSource *bs_, bool sharing_avail,
+	// inline BrowserClient(BrowserSource *bs_, bool sharing_avail,
+	// 		     bool reroute_audio_)
+	// 	: sharing_available(sharing_avail),
+	// 	  reroute_audio(reroute_audio_),
+	// 	  bs(bs_)
+	// {
+	// }
+	inline BrowserClient(bool sharing_avail,
 			     bool reroute_audio_)
 		: sharing_available(sharing_avail),
-		  reroute_audio(reroute_audio_),
-		  bs(bs_)
+		  reroute_audio(reroute_audio_)
 	{
 	}
 
@@ -130,12 +137,12 @@ public:
 			     PaintElementType type, const RectList &dirtyRects,
 			     const void *buffer, int width,
 			     int height) override;
-#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
+// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 	virtual void OnAcceleratedPaint(CefRefPtr<CefBrowser> browser,
 					PaintElementType type,
 					const RectList &dirtyRects,
 					void *shared_handle) override;
-#endif
+// #endif
 #if CHROME_VERSION_BUILD >= 4103
 	virtual void OnAudioStreamPacket(CefRefPtr<CefBrowser> browser,
 					 const float **data, int frames,

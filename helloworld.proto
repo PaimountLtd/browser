@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.helloworld";
+option java_outer_classname = "HelloWorldProto";
+option objc_class_prefix = "HLW";
+
+package helloworld;
+
+service BrowserServer {
+  rpc IntializeBrowserCEF (Request) returns (NoReply) {};
+  rpc CreateBrowserSource (CreateRequest) returns (NoReply) {};
+  rpc SetShowing (SetShowingRequest) returns (NoReply) {};
+  rpc SetActive (SetActiveRequest) returns (NoReply) {};
+  rpc Refresh (NoArgs) returns (NoReply) {};
+  rpc SignalBeginFrame (NoArgs) returns (SignalBeginFrameResponse) {};
+}
+
+message Request {
+  uint32 obs_version = 1;
+  string obs_locale = 2;
+  string obs_conf_path = 3;
+  string obs_browser_subprocess_path = 4;
+  bool hwaccel = 5;
+}
+
+message CreateRequest {
+  bool hwaccel = 1;
+  bool reroute_audio = 2;
+  int32 width = 3;
+  int32 height = 4;
+  int32 fps = 5;
+  bool fps_custom = 6;
+  int32 video_fps = 7;
+  string url = 8;
+}
+
+message SetShowingRequest {
+  bool showing = 1;
+}
+
+message SetActiveRequest {
+  bool active = 1;
+}
+
+message NoArgs {
+
+}
+
+message NoReply {
+
+}
+
+message SignalBeginFrameResponse {
+  int64 shared_handle = 1;
+}
