@@ -27,6 +27,8 @@ using helloworld::SetShowingRequest;
 using helloworld::SetActiveRequest;
 using helloworld::NoArgs;
 using helloworld::SignalBeginFrameResponse;
+using helloworld::IdRequest;
+using helloworld::DestroyBrowserSourceRequest;
 
 extern bool hwaccel;
 
@@ -37,14 +39,15 @@ public:
 
     void IntializeBrowserCEF();
     void CreateBrowserSource(
-        bool hwaccel, bool reroute_audio, int width,
+        uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,
         int height, int fps, bool fps_custom, int video_fps,
         std::string url
     );
-    void SetShowing(bool showing);
-    void SetActive(bool active);
-    void Refresh();
-    void* SignalBeginFrame();
+    void SetShowing(uint64_t sourceId, bool showing);
+    void SetActive(uint64_t sourceId, bool active);
+    void Refresh(uint64_t sourceId);
+    void* SignalBeginFrame(uint64_t sourceId);
+    void DestroyBrowserSource(uint64_t sourceId, bool async);
 
 private:
   std::unique_ptr<BrowserServer::Stub> stub_;

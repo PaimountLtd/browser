@@ -21,6 +21,7 @@
 #include <graphics/graphics.h>
 #include "cef-headers.hpp"
 // #include "browser-config.h"
+#include <mutex>
 
 #define USE_TEXTURE_COPY 0
 
@@ -37,7 +38,6 @@ class BrowserClient : public CefClient,
 		      public CefLoadHandler {
 
 	bool sharing_available = false;
-	bool reroute_audio = true;
 
 public:
 	// BrowserSource *bs;
@@ -54,6 +54,17 @@ public:
 	void *last_handle = nullptr;
 #endif
 // #endif
+
+	// bool hwaccel;
+	// uint32_t width;
+	// uint32_t height;
+	// uint32_t fps;
+	// bool fps_custom;
+	// uint32_t video_fps;
+	// std::string url;
+	bool reroute_audio;
+	CefRefPtr<CefBrowser> cefBrowser;
+	std::mutex browser_mtx;
 
 #if CHROME_VERSION_BUILD >= 4103
 	int sample_rate;

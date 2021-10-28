@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <map>
+#include <condition_variable>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -31,11 +33,14 @@ using helloworld::SetShowingRequest;
 using helloworld::SetActiveRequest;
 using helloworld::NoArgs;
 using helloworld::SignalBeginFrameResponse;
+using helloworld::IdRequest;
+using helloworld::DestroyBrowserSourceRequest;
 
 
 static CefRefPtr<BrowserApp> app;
-CefRefPtr<CefBrowser> cefBrowser;
 static std::thread manager_thread;
+std::map<uint64_t, CefRefPtr<BrowserClient>> browserClients;
+std::mutex browser_clients_mtx;
 
 static void BrowserInit(
 	uint32_t obs_version, std::string obs_locale,
@@ -144,23 +149,26 @@ bool QueueCEFTask(std::function<void()> task)
 			   CefRefPtr<BrowserTask>(new BrowserTask(task)));
 }
 
-void ExecuteOnBrowser(BrowserFunc func)
+void ExecuteOnBrowser(BrowserFunc func, CefRefPtr<CefBrowser> cefBrowser, bool async)
 {
-	QueueCEFTask([=]() { func(cefBrowser); });
+	if (!async) {
+		std::condition_variable cv;
+		std::mutex mtx;
+		if (!!cefBrowser)
+			QueueCEFTask([&]() {
+				func(cefBrowser); 
+				cv.notify_one();
+			});
+		std::unique_lock<std::mutex> lk(mtx);
+		cv.wait(lk);
+	} else {
+		if (!!cefBrowser)
+			QueueCEFTask([=]() { func(cefBrowser); });
+	}
 }
 
 // Logic and data behind the server's behavior.
 class BrowserServerServiceImpl final : public BrowserServer::Service {
-	bool hwaccel;
-	bool reroute_audio;
-	uint32_t width;
-	uint32_t height;
-	uint32_t fps;
-	bool fps_custom;
-	uint32_t video_fps;
-	std::string url;
-	CefRefPtr<BrowserClient> browserClient;
-
 	Status IntializeBrowserCEF(ServerContext* context, const Request* request,
 					NoReply* reply) override {
 		auto binded_fn = std::bind(BrowserManagerThread,
@@ -176,18 +184,25 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 
 	Status CreateBrowserSource(ServerContext* context, const CreateRequest* request,
 					NoReply* reply) override {
-		hwaccel = request->hwaccel();
-		reroute_audio = request->reroute_audio();
-		width = request->width();
-		height = request->height();
-		fps = request->fps();
-		fps_custom = request->fps_custom();
-		video_fps = request->video_fps();
-		url = request->url();
-		QueueCEFTask([this]() {
-			browserClient =
-				new BrowserClient(hwaccel, reroute_audio);
+		uint64_t id = request->id();
+		bool hwaccel = request->hwaccel();
+		bool reroute_audio = request->reroute_audio();
+		uint32_t width = request->width();
+		uint32_t height = request->height();
+		uint32_t fps = request->fps();
+		bool fps_custom = request->fps_custom();
+		uint32_t video_fps = request->video_fps();
+		std::string url = request->url();
+		QueueCEFTask([this, id, hwaccel, reroute_audio,
+			width, height, fps, fps_custom,
+			video_fps, url]() {
+			std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 
+			browserClients.insert_or_assign(
+				id,
+				new BrowserClient(hwaccel, reroute_audio)
+			);
+			std::lock_guard<std::mutex> lock_client(browserClients[id]->browser_mtx);
 			CefWindowInfo windowInfo;
 			windowInfo.width = width;
 			windowInfo.height = height;
@@ -205,34 +220,39 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 			cefBrowserSettings.default_font_size = 16;
 			cefBrowserSettings.default_fixed_font_size = 16;
 
-			cefBrowser = CefBrowserHost::CreateBrowserSync(
-				windowInfo, browserClient, url, cefBrowserSettings,
+			browserClients[id]->cefBrowser = CefBrowserHost::CreateBrowserSync(
+				windowInfo, browserClients[id], url, cefBrowserSettings,
 				CefRefPtr<CefDictionaryValue>(),
 				nullptr
 			);
 		
-			if (!cefBrowser) return;
+			if (!browserClients[id]->cefBrowser) return;
 
 			if (reroute_audio)
-				cefBrowser->GetHost()->SetAudioMuted(true);
+				browserClients[id]->cefBrowser->GetHost()->SetAudioMuted(true);
 
 			CefRefPtr<CefProcessMessage> msg =
 				CefProcessMessage::Create("Visibility");
 			CefRefPtr<CefListValue> args = msg->GetArgumentList();
 			args->SetBool(0, true);
-			SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg);
+			SendBrowserProcessMessage(browserClients[id]->cefBrowser, PID_RENDERER, msg);
 
 			CefRefPtr<CefProcessMessage> msg2 =
 				CefProcessMessage::Create("Active");
 			CefRefPtr<CefListValue> args2 = msg2->GetArgumentList();
 			args2->SetBool(0, true);
-			SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg2);
+			SendBrowserProcessMessage(browserClients[id]->cefBrowser, PID_RENDERER, msg2);
 		});
 		return Status::OK;
 	}
 
 	Status SetShowing(ServerContext* context, const SetShowingRequest* request,
 					NoReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
 			[=](CefRefPtr<CefBrowser> cefBrowser) {
 				CefRefPtr<CefProcessMessage> msg =
@@ -242,7 +262,7 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				args->SetBool(0, request->showing());
 				SendBrowserProcessMessage(cefBrowser,
 							  PID_RENDERER, msg);
-			});
+			}, browserClients[request->id()]->cefBrowser, true);
 		// Json json = Json::object{{"visible", showing}};
 // 		DispatchJSEvent("obsSourceVisibleChanged", json.dump(), this);
 // #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
@@ -257,6 +277,11 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 
 	Status SetActive(ServerContext* context, const SetActiveRequest* request,
 					NoReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
 			[=](CefRefPtr<CefBrowser> cefBrowser) {
 				CefRefPtr<CefProcessMessage> msg =
@@ -265,32 +290,68 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				args->SetBool(0, request->active());
 				SendBrowserProcessMessage(cefBrowser, PID_RENDERER,
 							msg);
-			});
+			}, browserClients[request->id()]->cefBrowser, true);
 		// Json json = Json::object{{"active", active}};
 		// DispatchJSEvent("obsSourceActiveChanged", json.dump(), this);
 		return Status::OK;
 	}
 
-	Status Refresh(ServerContext* context, const NoArgs* request,
+	Status Refresh(ServerContext* context, const IdRequest* request,
 					NoReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
 			[](CefRefPtr<CefBrowser> cefBrowser) {
 				cefBrowser->ReloadIgnoreCache();
-			});
+			}, browserClients[request->id()]->cefBrowser, true);
 		return Status::OK;
 	}
 
-	Status SignalBeginFrame(ServerContext* context, const NoArgs* request,
-					SignalBeginFrameResponse* reply) override {
+	Status SignalBeginFrame(ServerContext* context,
+		const IdRequest* request,
+		SignalBeginFrameResponse* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		// if (reset_frame) {
 			ExecuteOnBrowser(
 				[](CefRefPtr<CefBrowser> cefBrowser) {
 					cefBrowser->GetHost()->SendExternalBeginFrame();
-				});
+				}, browserClients[request->id()]->cefBrowser, true);
 
 			// reset_frame = false;
 		// }
-			reply->set_shared_handle((int64_t) browserClient->last_handle);
+			reply->set_shared_handle(
+				(int64_t) browserClients[request->id()]->last_handle
+			);
+		return Status::OK;
+	}
+
+	Status DestroyBrowserSource(ServerContext* context,
+		const DestroyBrowserSourceRequest* request,
+		NoReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		ExecuteOnBrowser(
+			[](CefRefPtr<CefBrowser> cefBrowser) {
+				/*
+			* This stops rendering
+			* http://magpcss.org/ceforum/viewtopic.php?f=6&t=12079
+			* https://bitbucket.org/chromiumembedded/cef/issues/1363/washidden-api-got-broken-on-branch-2062)
+			*/
+				cefBrowser->GetHost()->WasHidden(true);
+				cefBrowser->GetHost()->CloseBrowser(true);
+			}, browserClients[request->id()]->cefBrowser, request->async());
+
+		browserClients[request->id()]->cefBrowser = nullptr;
+		browserClients.erase(browserClients.find(request->id()));
 		return Status::OK;
 	}
 };

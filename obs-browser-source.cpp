@@ -145,14 +145,16 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 bool BrowserSource::CreateBrowser()
 {
 	bc->CreateBrowserSource(
-		hwaccel, reroute_audio, width, height,
-		fps, fps_custom, obs_get_active_fps(), url
+		(uint64_t) &source, hwaccel, reroute_audio, 
+		width, height, fps, fps_custom,
+		obs_get_active_fps(), url
 	);
 	return true;
 }
 
 void BrowserSource::DestroyBrowser(bool async)
 {
+	bc->DestroyBrowserSource((uint64_t) &source, async);
 	// ExecuteOnBrowser(
 	// 	[](CefRefPtr<CefBrowser> cefBrowser) {
 	// 		CefRefPtr<CefClient> client =
@@ -173,7 +175,7 @@ void BrowserSource::DestroyBrowser(bool async)
 	// 	},
 	// 	async);
 
-	cefBrowser = nullptr;
+	// cefBrowser = nullptr;
 }
 #if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
 void BrowserSource::ClearAudioStreams()
@@ -320,7 +322,7 @@ void BrowserSource::SetShowing(bool showing)
 			DestroyBrowser(true);
 		}
 	} else {
-		bc->SetShowing(showing);
+		bc->SetShowing((uint64_t) &source, showing);
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 		if (showing && !fps_custom) {
@@ -332,19 +334,19 @@ void BrowserSource::SetShowing(bool showing)
 
 void BrowserSource::SetActive(bool active)
 {
-	bc->SetActive(active);
+	bc->SetActive((uint64_t) &source, active);
 }
 
 void BrowserSource::Refresh()
 {
-	bc->Refresh();
+	bc->Refresh((uint64_t) &source);
 }
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
 inline void BrowserSource::SignalBeginFrame()
 {
 	if (reset_frame) {
-		void* shared_handle = bc->SignalBeginFrame();
+		void* shared_handle = bc->SignalBeginFrame((uint64_t) &source);
 		if (shared_handle && this->last_handle != shared_handle) {
 			obs_enter_graphics();
 

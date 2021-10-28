@@ -12,8 +12,9 @@ service BrowserServer {
   rpc CreateBrowserSource (CreateRequest) returns (NoReply) {};
   rpc SetShowing (SetShowingRequest) returns (NoReply) {};
   rpc SetActive (SetActiveRequest) returns (NoReply) {};
-  rpc Refresh (NoArgs) returns (NoReply) {};
-  rpc SignalBeginFrame (NoArgs) returns (SignalBeginFrameResponse) {};
+  rpc Refresh (IdRequest) returns (NoReply) {};
+  rpc SignalBeginFrame (IdRequest) returns (SignalBeginFrameResponse) {};
+  rpc DestroyBrowserSource (DestroyBrowserSourceRequest) returns (NoReply) {};
 }
 
 message Request {
@@ -25,22 +26,29 @@ message Request {
 }
 
 message CreateRequest {
-  bool hwaccel = 1;
-  bool reroute_audio = 2;
-  int32 width = 3;
-  int32 height = 4;
-  int32 fps = 5;
-  bool fps_custom = 6;
-  int32 video_fps = 7;
-  string url = 8;
+  uint64 id = 1;
+  bool hwaccel = 2;
+  bool reroute_audio = 3;
+  int32 width = 4;
+  int32 height = 5;
+  int32 fps = 6;
+  bool fps_custom = 7;
+  int32 video_fps = 8;
+  string url = 9;
 }
 
 message SetShowingRequest {
-  bool showing = 1;
+  uint64 id = 1;
+  bool showing = 2;
 }
 
 message SetActiveRequest {
-  bool active = 1;
+  uint64 id = 1;
+  bool active = 2;
+}
+
+message IdRequest {
+  uint64 id = 1;
 }
 
 message NoArgs {
@@ -53,4 +61,9 @@ message NoReply {
 
 message SignalBeginFrameResponse {
   int64 shared_handle = 1;
+}
+
+message DestroyBrowserSourceRequest {
+  uint64 id = 1;
+  bool async = 2;
 }

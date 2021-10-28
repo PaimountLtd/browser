@@ -49,10 +49,11 @@
   }
 
 void BrowserGRPCClient::CreateBrowserSource(
-    bool hwaccel, bool reroute_audio, int width,
-    int height, int fps, bool fps_custom,
+    uint64_t sourceId, bool hwaccel, bool reroute_audio,
+    int width, int height, int fps, bool fps_custom,
     int video_fps, std::string url) {
   CreateRequest request;
+  request.set_id(sourceId);
   request.set_hwaccel(hwaccel);
   request.set_reroute_audio(reroute_audio);
   request.set_width(width);
@@ -67,35 +68,48 @@ void BrowserGRPCClient::CreateBrowserSource(
   stub_->CreateBrowserSource(&context, request, &reply);
 }
 
-void BrowserGRPCClient::SetShowing(bool showing) {
+void BrowserGRPCClient::SetShowing(uint64_t sourceId, bool showing) {
   SetShowingRequest request;
   request.set_showing(showing);
+  request.set_id(sourceId);
 
   NoReply reply;
   ClientContext context;
   stub_->SetShowing(&context, request, &reply);
 }
 
-void BrowserGRPCClient::SetActive(bool active) {
+void BrowserGRPCClient::SetActive(uint64_t sourceId, bool active) {
   SetActiveRequest request;
   request.set_active(active);
+  request.set_id(sourceId);
 
   NoReply reply;
   ClientContext context;
   stub_->SetActive(&context, request, &reply);
 }
 
-void BrowserGRPCClient::Refresh() {
-  NoArgs request;
+void BrowserGRPCClient::Refresh(uint64_t sourceId) {
+  IdRequest request;
+  request.set_id(sourceId);
   NoReply reply;
   ClientContext context;
   stub_->Refresh(&context, request, &reply);
 }
 
-void* BrowserGRPCClient::SignalBeginFrame() {
-  NoArgs request;
+void* BrowserGRPCClient::SignalBeginFrame(uint64_t sourceId) {
+  IdRequest request;
+  request.set_id(sourceId);
   SignalBeginFrameResponse reply;
   ClientContext context;
   stub_->SignalBeginFrame(&context, request, &reply);
   return (void*)reply.shared_handle();
+}
+
+void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {
+  DestroyBrowserSourceRequest request;
+  request.set_id(sourceId);
+  request.set_async(async);
+  NoReply reply;
+  ClientContext context;
+  stub_->DestroyBrowserSource(&context, request, &reply);
 }
