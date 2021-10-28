@@ -48,6 +48,7 @@ public:
     void Refresh(uint64_t sourceId);
     void* SignalBeginFrame(uint64_t sourceId);
     void DestroyBrowserSource(uint64_t sourceId, bool async);
+    void ShutdownBrowserCEF();
 
 private:
   std::unique_ptr<BrowserServer::Stub> stub_;

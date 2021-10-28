@@ -36,11 +36,23 @@ using helloworld::SignalBeginFrameResponse;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
 
-
+std::unique_ptr<Server> server;
 static CefRefPtr<BrowserApp> app;
 static std::thread manager_thread;
 std::map<uint64_t, CefRefPtr<BrowserClient>> browserClients;
 std::mutex browser_clients_mtx;
+std::thread* shutdown_thread;
+
+static void BrowserShutdown(void)
+{
+	CefShutdown();
+	app = nullptr;
+}
+
+static void ShutdownServer(void)
+{
+	server->Shutdown();
+}
 
 static void BrowserInit(
 	uint32_t obs_version, std::string obs_locale,
@@ -127,7 +139,7 @@ static void BrowserManagerThread(
 		hwaccel
 	);
 	CefRunMessageLoop();
-	// BrowserShutdown();
+	BrowserShutdown();
 }
 
 class BrowserTask : public CefTask {
@@ -354,6 +366,20 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 		browserClients.erase(browserClients.find(request->id()));
 		return Status::OK;
 	}
+
+	Status ShutdownBrowserCEF(ServerContext* context,
+		const NoArgs* request,
+		NoReply* reply) override {
+		if (manager_thread.joinable()) {
+			while (!QueueCEFTask([]() { CefQuitMessageLoop(); }))
+				Sleep(5);
+
+			manager_thread.join();
+		}
+		
+		shutdown_thread = new std::thread(ShutdownServer);
+		return Status::OK;
+	}
 };
 
 void RunServer() {
@@ -369,7 +395,7 @@ void RunServer() {
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(&service);
   // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
+  server = builder.BuildAndStart();
   std::cout << "Server listening on " << server_address << std::endl;
 
   // Wait for the server to shutdown. Note that some other thread must be
@@ -379,7 +405,9 @@ void RunServer() {
 
 
 int main(int argc, char** argv) {
-  RunServer();
+	RunServer();
 
-  return 0;
+	if (shutdown_thread && shutdown_thread->joinable())
+		shutdown_thread->join();
+	return 0;
 }

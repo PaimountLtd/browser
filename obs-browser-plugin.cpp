@@ -836,6 +836,7 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+	bc->ShutdownBrowserCEF();
 // #ifdef USE_UI_LOOP
 // 	BrowserShutdown();
 // #else

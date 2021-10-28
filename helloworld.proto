@@ -15,6 +15,7 @@ service BrowserServer {
   rpc Refresh (IdRequest) returns (NoReply) {};
   rpc SignalBeginFrame (IdRequest) returns (SignalBeginFrameResponse) {};
   rpc DestroyBrowserSource (DestroyBrowserSourceRequest) returns (NoReply) {};
+  rpc ShutdownBrowserCEF (NoArgs) returns (NoReply) {};
 }
 
 message Request {

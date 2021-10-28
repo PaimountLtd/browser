@@ -113,3 +113,10 @@ void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {
   ClientContext context;
   stub_->DestroyBrowserSource(&context, request, &reply);
 }
+
+void BrowserGRPCClient::ShutdownBrowserCEF() {
+  NoArgs request;
+  NoReply reply;
+  ClientContext context;
+  stub_->ShutdownBrowserCEF(&context, request, &reply);
+}
