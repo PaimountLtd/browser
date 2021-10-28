@@ -29,6 +29,7 @@ using helloworld::NoArgs;
 using helloworld::SignalBeginFrameResponse;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
+using helloworld::MouseEventRequest;
 
 extern bool hwaccel;
 
@@ -49,6 +50,37 @@ public:
     void* SignalBeginFrame(uint64_t sourceId);
     void DestroyBrowserSource(uint64_t sourceId, bool async);
     void ShutdownBrowserCEF();
+    
+    void SendMouseClick(
+      uint64_t sourceId,
+      uint32_t modifiers,
+      int32_t x,
+      int32_t y,
+      int32_t type,
+      bool mouse_up,
+      uint32_t click_count);
+    void SendMouseMove(
+      uint64_t sourceId,
+      uint32_t modifiers,
+      int32_t x,
+      int32_t y,
+      bool mouse_leave);
+    void SendMouseWheel(
+      uint64_t sourceId,
+      uint32_t modifiers,
+      int32_t x,
+      int32_t y,
+      int32_t x_delta,
+      int32_t y_delta);
+    void SendFocus(uint64_t sourceId, bool focus);
+    void SendKeyClick(
+      uint64_t sourceId,
+      std::string text,
+      uint32_t native_vkey,
+      uint32_t modifiers,
+      uint32_t native_scancode,
+      bool key_up
+    );
 
 private:
   std::unique_ptr<BrowserServer::Stub> stub_;

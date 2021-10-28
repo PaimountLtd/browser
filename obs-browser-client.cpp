@@ -120,3 +120,73 @@ void BrowserGRPCClient::ShutdownBrowserCEF() {
   ClientContext context;
   stub_->ShutdownBrowserCEF(&context, request, &reply);
 }
+
+void BrowserGRPCClient::SendMouseClick(
+  uint64_t sourceId, uint32_t modifiers, int32_t x, int32_t y,
+  int32_t type, bool mouse_up, uint32_t click_count) {
+  MouseEventRequest request;
+  request.set_id(sourceId);
+  request.set_modifiers(modifiers);
+  request.set_x(x);
+  request.set_y(y);
+  request.set_type(type);
+  request.set_mouse_up(mouse_up);
+  request.set_click_count(click_count);
+  NoReply reply;
+  ClientContext context;
+  stub_->SendMouseClick(&context, request, &reply);
+}
+
+void BrowserGRPCClient::SendMouseMove(
+  uint64_t sourceId, uint32_t modifiers,
+  int32_t x, int32_t y, bool mouse_leave) {
+  MouseEventRequest request;
+  request.set_id(sourceId);
+  request.set_modifiers(modifiers);
+  request.set_x(x);
+  request.set_y(y);
+  request.set_mouse_leave(mouse_leave);
+  NoReply reply;
+  ClientContext context;
+  stub_->SendMouseMove(&context, request, &reply);
+}
+
+void BrowserGRPCClient::SendMouseWheel(
+  uint64_t sourceId, uint32_t modifiers,
+  int32_t x, int32_t y, int32_t x_delta, int32_t y_delta) {
+  MouseEventRequest request;
+  request.set_id(sourceId);
+  request.set_modifiers(modifiers);
+  request.set_x(x);
+  request.set_y(y);
+  request.set_x_delta(x_delta);
+  request.set_y_delta(y_delta);
+  NoReply reply;
+  ClientContext context;
+  stub_->SendMouseWheel(&context, request, &reply);
+}
+
+void BrowserGRPCClient::SendFocus(uint64_t sourceId, bool focus) {
+  MouseEventRequest request;
+  request.set_id(sourceId);
+  request.set_focus(focus);
+  NoReply reply;
+  ClientContext context;
+  stub_->SendFocus(&context, request, &reply);
+}
+
+void BrowserGRPCClient::SendKeyClick(
+  uint64_t sourceId, std::string text,
+  uint32_t native_vkey, uint32_t modifiers,
+  uint32_t native_scancode, bool key_up) {
+  MouseEventRequest request;
+  request.set_id(sourceId);
+  request.set_text(text);
+  request.set_native_vkey(native_vkey);
+  request.set_modifiers(modifiers);
+  request.set_native_scancode(native_scancode);
+  request.set_key_up(key_up);
+  NoReply reply;
+  ClientContext context;
+  stub_->SendKeyClick(&context, request, &reply);
+}

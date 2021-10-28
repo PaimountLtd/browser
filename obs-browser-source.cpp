@@ -155,27 +155,6 @@ bool BrowserSource::CreateBrowser()
 void BrowserSource::DestroyBrowser(bool async)
 {
 	bc->DestroyBrowserSource((uint64_t) &source, async);
-	// ExecuteOnBrowser(
-	// 	[](CefRefPtr<CefBrowser> cefBrowser) {
-	// 		CefRefPtr<CefClient> client =
-	// 			cefBrowser->GetHost()->GetClient();
-	// 		BrowserClient *bc =
-	// 			reinterpret_cast<BrowserClient *>(client.get());
-	// 		if (bc) {
-	// 			bc->bs = nullptr;
-	// 		}
-
-	// 		/*
-	// 	 * This stops rendering
-	// 	 * http://magpcss.org/ceforum/viewtopic.php?f=6&t=12079
-	// 	 * https://bitbucket.org/chromiumembedded/cef/issues/1363/washidden-api-got-broken-on-branch-2062)
-	// 	 */
-	// 		cefBrowser->GetHost()->WasHidden(true);
-	// 		cefBrowser->GetHost()->CloseBrowser(true);
-	// 	},
-	// 	async);
-
-	// cefBrowser = nullptr;
 }
 #if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
 void BrowserSource::ClearAudioStreams()
@@ -195,74 +174,37 @@ void BrowserSource::SendMouseClick(const struct obs_mouse_event *event,
 				   int32_t type, bool mouse_up,
 				   uint32_t click_count)
 {
-	uint32_t modifiers = event->modifiers;
-	int32_t x = event->x;
-	int32_t y = event->y;
-
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			CefMouseEvent e;
-			e.modifiers = modifiers;
-			e.x = x;
-			e.y = y;
-			CefBrowserHost::MouseButtonType buttonType =
-				(CefBrowserHost::MouseButtonType)type;
-			cefBrowser->GetHost()->SendMouseClickEvent(
-				e, buttonType, mouse_up, click_count);
-		},
-		true);
+	bc->SendMouseClick(
+		(uint64_t) &source, event->modifiers, event->x,
+		event->y, type, mouse_up, click_count);
 }
 
 void BrowserSource::SendMouseMove(const struct obs_mouse_event *event,
 				  bool mouse_leave)
 {
-	uint32_t modifiers = event->modifiers;
-	int32_t x = event->x;
-	int32_t y = event->y;
-
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			CefMouseEvent e;
-			e.modifiers = modifiers;
-			e.x = x;
-			e.y = y;
-			cefBrowser->GetHost()->SendMouseMoveEvent(e,
-								  mouse_leave);
-		},
-		true);
+	bc->SendMouseMove(
+		(uint64_t) &source, event->modifiers, event->x,
+		event->y, mouse_leave);
 }
 
 void BrowserSource::SendMouseWheel(const struct obs_mouse_event *event,
 				   int x_delta, int y_delta)
 {
-	uint32_t modifiers = event->modifiers;
-	int32_t x = event->x;
-	int32_t y = event->y;
-
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			CefMouseEvent e;
-			e.modifiers = modifiers;
-			e.x = x;
-			e.y = y;
-			cefBrowser->GetHost()->SendMouseWheelEvent(e, x_delta,
-								   y_delta);
-		},
-		true);
+	bc->SendMouseWheel(
+		(uint64_t) &source, event->modifiers, event->x, event->y,
+		x_delta, y_delta);
 }
 
 void BrowserSource::SendFocus(bool focus)
 {
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			cefBrowser->GetHost()->SendFocusEvent(focus);
-		},
-		true);
+	bc->SendFocus(
+		(uint64_t) &source, focus);
 }
 
 void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 {
 	std::string text = event->text;
+	uint32_t native_scancode = 0;
 #ifdef __linux__
 	uint32_t native_vkey = KeyboardCodeFromXKeysym(event->native_vkey);
 	uint32_t modifiers = event->native_modifiers;
@@ -271,44 +213,13 @@ void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 	uint32_t modifiers = event->modifiers;
 #else
 	uint32_t native_vkey = event->native_vkey;
-	uint32_t native_scancode = event->native_scancode;
+	native_scancode = event->native_scancode;
 	uint32_t modifiers = event->native_modifiers;
 #endif
 
-	ExecuteOnBrowser(
-		[=](CefRefPtr<CefBrowser> cefBrowser) {
-			CefKeyEvent e;
-			e.windows_key_code = native_vkey;
-#ifdef __APPLE__
-			e.native_key_code = native_scancode;
-#endif
-
-			e.type = key_up ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
-
-			if (!text.empty()) {
-				wstring wide = to_wide(text);
-				if (wide.size())
-					e.character = wide[0];
-			}
-
-			//e.native_key_code = native_vkey;
-			e.modifiers = modifiers;
-
-			cefBrowser->GetHost()->SendKeyEvent(e);
-			if (!text.empty() && !key_up) {
-				e.type = KEYEVENT_CHAR;
-#ifdef __linux__
-				e.windows_key_code =
-					KeyboardCodeFromXKeysym(e.character);
-#elif defined(_WIN32)
-				e.windows_key_code = e.character;
-#else
-				e.native_key_code = native_scancode;
-#endif
-				cefBrowser->GetHost()->SendKeyEvent(e);
-			}
-		},
-		true);
+	bc->SendKeyClick(
+		(uint64_t) &source, text, native_vkey,
+		modifiers, native_scancode, key_up);
 }
 
 void BrowserSource::SetShowing(bool showing)

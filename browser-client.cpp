@@ -157,19 +157,17 @@ bool BrowserClient::GetViewRect(
 #endif
 	CefRefPtr<CefBrowser>, CefRect &rect)
 {
-	std::cout << "GetViewRect" << std::endl;
-	// if (!bs) {
-// #if CHROME_VERSION_BUILD >= 3578
-// 		rect.Set(0, 0, 16, 16);
-// 		return;
-// #else
-// 		return false;
-// #endif
-	// }
+	if (!cefBrowser) {
+#if CHROME_VERSION_BUILD >= 3578
+		rect.Set(0, 0, 16, 16);
+		return;
+#else
+		return false;
+#endif
+	}
 
-	// rect.Set(0, 0, bs->width < 1 ? 1 : bs->width,
-	// 	 bs->height < 1 ? 1 : bs->height);
-	rect.Set(0, 0, 800, 600);
+	rect.Set(0, 0, width < 1 ? 1 : width,
+		 height < 1 ? 1 : height);
 #if CHROME_VERSION_BUILD >= 3578
 	return;
 #else
@@ -181,7 +179,6 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 			    const RectList &, const void *buffer, int width,
 			    int height)
 {
-	std::cout << "OnPaint" << std::endl;
 // 	if (type != PET_VIEW) {
 // 		return;
 // 	}
@@ -222,7 +219,6 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
 				       const RectList &, void *shared_handle)
 {
-	std::cout << "OnAcceleratedPaint" << std::endl;
 	if (shared_handle != last_handle)
 		last_handle = shared_handle;
 

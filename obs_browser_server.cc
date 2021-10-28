@@ -20,6 +20,7 @@
 #include "browser-app.hpp"
 #include "browser-client.hpp"
 #include "browser-scheme.hpp"
+#include "wide-string.hpp"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -35,6 +36,7 @@ using helloworld::NoArgs;
 using helloworld::SignalBeginFrameResponse;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
+using helloworld::MouseEventRequest;
 
 std::unique_ptr<Server> server;
 static CefRefPtr<BrowserApp> app;
@@ -221,6 +223,10 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 			windowInfo.windowless_rendering_enabled = true;
 			windowInfo.shared_texture_enabled = hwaccel;
 
+			browserClients[id]->width = width;
+			browserClients[id]->height = height;
+			browserClients[id]->reroute_audio = reroute_audio;
+
 			CefBrowserSettings cefBrowserSettings;
 			if (!fps_custom) {
 				windowInfo.external_begin_frame_enabled = true;
@@ -378,6 +384,175 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 		}
 		
 		shutdown_thread = new std::thread(ShutdownServer);
+		return Status::OK;
+	}
+
+	Status SendMouseClick(ServerContext* context,
+		const MouseEventRequest* request,
+		NoReply* reply) override {
+
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+
+		uint32_t modifiers = request->modifiers();
+		int32_t x = request->x();
+		int32_t y = request->y();
+		int32_t type = request->type();
+		bool mouse_up = request->mouse_up();
+		uint32_t click_count = request->click_count();
+
+		ExecuteOnBrowser(
+			[=](CefRefPtr<CefBrowser> cefBrowser) {
+				CefMouseEvent e;
+				e.modifiers = modifiers;
+				e.x = x;
+				e.y = y;
+				CefBrowserHost::MouseButtonType buttonType =
+					(CefBrowserHost::MouseButtonType)type;
+				cefBrowser->GetHost()->SendMouseClickEvent(
+					e, buttonType, mouse_up, click_count);
+			}, browserClients[request->id()]->cefBrowser, true);
+		return Status::OK;
+	}
+
+	Status SendMouseMove(ServerContext* context,
+		const MouseEventRequest* request,
+		NoReply* reply) override {
+
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+
+		uint32_t modifiers = request->modifiers();
+		int32_t x = request->x();
+		int32_t y = request->y();
+		bool mouse_leave = request->mouse_leave();
+
+		ExecuteOnBrowser(
+			[=](CefRefPtr<CefBrowser> cefBrowser) {
+				CefMouseEvent e;
+				e.modifiers = modifiers;
+				e.x = x;
+				e.y = y;
+				cefBrowser->GetHost()->SendMouseMoveEvent(e,
+									mouse_leave);
+			}, browserClients[request->id()]->cefBrowser, true);
+
+		return Status::OK;
+	}
+
+	Status SendMouseWheel(ServerContext* context,
+		const MouseEventRequest* request,
+		NoReply* reply) override {
+
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+
+		uint32_t modifiers = request->modifiers();
+		int32_t x = request->x();
+		int32_t y = request->y();
+		int32_t x_delta = request->x_delta();
+		int32_t y_delta = request->y_delta();
+
+		ExecuteOnBrowser(
+			[=](CefRefPtr<CefBrowser> cefBrowser) {
+				CefMouseEvent e;
+				e.modifiers = modifiers;
+				e.x = x;
+				e.y = y;
+				cefBrowser->GetHost()->SendMouseWheelEvent(e, x_delta,
+									y_delta);
+			}, browserClients[request->id()]->cefBrowser, true);
+
+		return Status::OK;
+	}
+
+	Status SendFocus(ServerContext* context,
+		const MouseEventRequest* request,
+		NoReply* reply) override {
+
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+
+		bool focus = request->focus();
+
+		ExecuteOnBrowser(
+			[=](CefRefPtr<CefBrowser> cefBrowser) {
+				cefBrowser->GetHost()->SendFocusEvent(focus);
+			}, browserClients[request->id()]->cefBrowser, true);
+
+		return Status::OK;
+	}
+
+	Status SendKeyClick(ServerContext* context,
+		const MouseEventRequest* request,
+		NoReply* reply) override {
+
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()])
+			return Status::OK;
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+
+		std::string text = request->text();
+#ifdef __linux__
+		uint32_t native_vkey = KeyboardCodeFromXKeysym(request->native_vkey());
+		uint32_t modifiers = request->modifiers();
+#elif defined(_WIN32)
+		uint32_t native_vkey = request->native_vkey();
+		uint32_t modifiers = request->modifiers();
+#else
+		uint32_t native_vkey = request->native_vkey();
+		uint32_t native_scancode = request->native_scancode();
+		uint32_t modifiers = request->modifiers();
+#endif
+		bool key_up = request->key_up();
+
+		ExecuteOnBrowser(
+			[=](CefRefPtr<CefBrowser> cefBrowser) {
+				CefKeyEvent e;
+				e.windows_key_code = native_vkey;
+#ifdef __APPLE__
+				e.native_key_code = native_scancode;
+#endif
+
+				e.type = key_up ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
+
+				if (!text.empty()) {
+					std::wstring wide = to_wide(text);
+					if (wide.size())
+						e.character = wide[0];
+				}
+
+				//e.native_key_code = native_vkey;
+				e.modifiers = modifiers;
+
+				cefBrowser->GetHost()->SendKeyEvent(e);
+				if (!text.empty() && !key_up) {
+					e.type = KEYEVENT_CHAR;
+#ifdef __linux__
+					e.windows_key_code =
+						KeyboardCodeFromXKeysym(e.character);
+#elif defined(_WIN32)
+					e.windows_key_code = e.character;
+#else
+					e.native_key_code = native_scancode;
+#endif
+					cefBrowser->GetHost()->SendKeyEvent(e);
+				}
+			}, browserClients[request->id()]->cefBrowser, true);
+
 		return Status::OK;
 	}
 };

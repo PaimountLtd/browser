@@ -16,6 +16,11 @@ service BrowserServer {
   rpc SignalBeginFrame (IdRequest) returns (SignalBeginFrameResponse) {};
   rpc DestroyBrowserSource (DestroyBrowserSourceRequest) returns (NoReply) {};
   rpc ShutdownBrowserCEF (NoArgs) returns (NoReply) {};
+  rpc SendMouseClick (MouseEventRequest) returns (NoReply) {};
+  rpc SendMouseMove (MouseEventRequest) returns (NoReply) {};
+  rpc SendMouseWheel (MouseEventRequest) returns (NoReply) {};
+  rpc SendFocus (MouseEventRequest) returns (NoReply) {};
+  rpc SendKeyClick (MouseEventRequest) returns (NoReply) {};
 }
 
 message Request {
@@ -67,4 +72,22 @@ message SignalBeginFrameResponse {
 message DestroyBrowserSourceRequest {
   uint64 id = 1;
   bool async = 2;
+}
+
+message MouseEventRequest {
+  uint64 id = 1;
+  uint32 modifiers = 2;
+  int32 x = 3;
+  int32 y = 4;
+  int32 type = 5;
+  bool mouse_up = 6;
+  uint32 click_count = 7;
+  bool mouse_leave = 8;
+  int32 x_delta = 9;
+  int32 y_delta = 10;
+  bool focus = 11;
+  uint32 native_vkey = 12;
+  uint32 native_scancode = 13;
+  string text = 14;
+  bool key_up = 15;
 }

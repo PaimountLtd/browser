@@ -56,8 +56,8 @@ public:
 // #endif
 
 	// bool hwaccel;
-	// uint32_t width;
-	// uint32_t height;
+	uint32_t width;
+	uint32_t height;
 	// uint32_t fps;
 	// bool fps_custom;
 	// uint32_t video_fps;

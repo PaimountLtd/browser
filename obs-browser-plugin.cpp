@@ -837,16 +837,4 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	bc->ShutdownBrowserCEF();
-// #ifdef USE_UI_LOOP
-// 	BrowserShutdown();
-// #else
-// 	if (manager_thread.joinable()) {
-// 		while (!QueueCEFTask([]() { CefQuitMessageLoop(); }))
-// 			os_sleep_ms(5);
-
-// 		manager_thread.join();
-// 	}
-// #endif
-
-// 	os_event_destroy(cef_started_event);
 }
