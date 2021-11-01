@@ -23,6 +23,7 @@
 #include <obs.hpp>
 #include <util/platform.h>
 #include <iostream>
+#include <vector>
 
 using namespace json11;
 
@@ -381,6 +382,13 @@ void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser, int id,
 					 int, ChannelLayout channel_layout,
 					 int sample_rate, int)
 {
+	if (!OnAudioStreamStarted_reactor || !OnAudioStreamStarted_reply)
+		return;
+
+	OnAudioStreamStarted_reply->set_id((int32_t)id);
+	OnAudioStreamStarted_reply->set_channel_layout((int32_t)channel_layout);
+	OnAudioStreamStarted_reply->set_sample_rate((int32_t)sample_rate);
+	OnAudioStreamStarted_reactor->Finish(Status::OK);
 	// UNUSED_PARAMETER(browser);
 	// if (!bs) {
 	// 	return;
@@ -407,6 +415,28 @@ void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
 					const float **data, int frames,
 					int64_t pts)
 {
+	std::lock_guard<std::mutex> lock_client(browser_mtx);
+	if (OnAudioStreamPacket_requested) {
+		const char **pcm = (const char **)data;
+		size_t size = frames * sizeof(float);
+
+		for (int i = 0; i < channels; i++) {
+			// if (pcm[i][0] == 0) {
+			// 	OnAudioStreamPacket_reply->add_data("");
+			// 	continue;
+			// }
+			std::string my_buffer2 (pcm[i], size);
+			OnAudioStreamPacket_reply->add_data(my_buffer2);
+		}
+		OnAudioStreamPacket_reply->set_frames(frames);
+		OnAudioStreamPacket_reply->set_pts(pts);
+
+
+		OnAudioStreamPacket_requested = false;
+		OnAudioStreamPacket_reactor->Finish(Status::OK);
+	} else {
+		std::cout << "packet dropped" << std::endl;
+	}
 	// UNUSED_PARAMETER(browser);
 	// if (!bs) {
 	// 	return;

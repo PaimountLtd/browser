@@ -21,6 +21,8 @@ service BrowserServer {
   rpc SendMouseWheel (MouseEventRequest) returns (NoReply) {};
   rpc SendFocus (MouseEventRequest) returns (NoReply) {};
   rpc SendKeyClick (MouseEventRequest) returns (NoReply) {};
+  rpc OnAudioStreamStarted (IdRequest) returns (OnAudioStreamStartedReply);
+  rpc OnAudioStreamPacket (OnAudioStreamPacketRequest) returns (OnAudioStreamPacketReply);
 }
 
 message Request {
@@ -90,4 +92,21 @@ message MouseEventRequest {
   uint32 native_scancode = 13;
   string text = 14;
   bool key_up = 15;
+}
+
+message OnAudioStreamStartedReply {
+  int32 id = 1;
+  int32 channel_layout = 2;
+  int32 sample_rate = 3;
+}
+
+message OnAudioStreamPacketRequest {
+  uint64 id = 1;
+  int32 channels = 2;
+}
+
+message OnAudioStreamPacketReply {
+  repeated bytes data = 1;
+  int32 frames = 2;
+  int64 pts = 3;
 }

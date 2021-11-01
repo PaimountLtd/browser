@@ -1,3 +1,8 @@
+#pragma once
+
+#ifndef __OBS_BROWSER_CLIENT_H__
+#define __OBS_BROWSER_CLIENT_H__
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -16,6 +21,8 @@
 #include <obs.hpp>
 #include <functional>
 
+#include "obs-browser-source.hpp"
+
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
@@ -30,58 +37,67 @@ using helloworld::SignalBeginFrameResponse;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
 using helloworld::MouseEventRequest;
+using helloworld::OnAudioStreamStartedReply;
+using helloworld::OnAudioStreamPacketReply;
+using helloworld::OnAudioStreamPacketRequest;
 
 extern bool hwaccel;
+
+struct BrowserSource;
 
 class BrowserGRPCClient {
 public:
 	BrowserGRPCClient(std::shared_ptr<Channel> channel)
       : stub_(BrowserServer::NewStub(channel)) {}
 
-    void IntializeBrowserCEF();
-    void CreateBrowserSource(
-        uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,
-        int height, int fps, bool fps_custom, int video_fps,
-        std::string url
-    );
-    void SetShowing(uint64_t sourceId, bool showing);
-    void SetActive(uint64_t sourceId, bool active);
-    void Refresh(uint64_t sourceId);
-    void* SignalBeginFrame(uint64_t sourceId);
-    void DestroyBrowserSource(uint64_t sourceId, bool async);
-    void ShutdownBrowserCEF();
-    
-    void SendMouseClick(
-      uint64_t sourceId,
-      uint32_t modifiers,
-      int32_t x,
-      int32_t y,
-      int32_t type,
-      bool mouse_up,
-      uint32_t click_count);
-    void SendMouseMove(
-      uint64_t sourceId,
-      uint32_t modifiers,
-      int32_t x,
-      int32_t y,
-      bool mouse_leave);
-    void SendMouseWheel(
-      uint64_t sourceId,
-      uint32_t modifiers,
-      int32_t x,
-      int32_t y,
-      int32_t x_delta,
-      int32_t y_delta);
-    void SendFocus(uint64_t sourceId, bool focus);
-    void SendKeyClick(
-      uint64_t sourceId,
-      std::string text,
-      uint32_t native_vkey,
-      uint32_t modifiers,
-      uint32_t native_scancode,
-      bool key_up
-    );
+  void IntializeBrowserCEF();
+  void CreateBrowserSource(
+      uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,
+      int height, int fps, bool fps_custom, int video_fps,
+      std::string url
+  );
+  void SetShowing(uint64_t sourceId, bool showing);
+  void SetActive(uint64_t sourceId, bool active);
+  void Refresh(uint64_t sourceId);
+  void* SignalBeginFrame(uint64_t sourceId);
+  void DestroyBrowserSource(uint64_t sourceId, bool async);
+  void ShutdownBrowserCEF();
+  
+  void SendMouseClick(
+    uint64_t sourceId,
+    uint32_t modifiers,
+    int32_t x,
+    int32_t y,
+    int32_t type,
+    bool mouse_up,
+    uint32_t click_count);
+  void SendMouseMove(
+    uint64_t sourceId,
+    uint32_t modifiers,
+    int32_t x,
+    int32_t y,
+    bool mouse_leave);
+  void SendMouseWheel(
+    uint64_t sourceId,
+    uint32_t modifiers,
+    int32_t x,
+    int32_t y,
+    int32_t x_delta,
+    int32_t y_delta);
+  void SendFocus(uint64_t sourceId, bool focus);
+  void SendKeyClick(
+    uint64_t sourceId,
+    std::string text,
+    uint32_t native_vkey,
+    uint32_t modifiers,
+    uint32_t native_scancode,
+    bool key_up
+  );
+
+  void OnAudioStreamStarted(BrowserSource* bs);
+  void OnAudioStreamPacket(BrowserSource* bs);
 
 private:
   std::unique_ptr<BrowserServer::Stub> stub_;
 };
+#endif

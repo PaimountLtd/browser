@@ -22,10 +22,12 @@
 #include "browser-scheme.hpp"
 #include "wide-string.hpp"
 
+using grpc::CallbackServerContext;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
+using grpc::ServerUnaryReactor;
 using helloworld::BrowserServer;
 using helloworld::NoReply;
 using helloworld::Request;
@@ -37,6 +39,8 @@ using helloworld::SignalBeginFrameResponse;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
 using helloworld::MouseEventRequest;
+using helloworld::OnAudioStreamStartedReply;
+using helloworld::OnAudioStreamPacketRequest;
 
 std::unique_ptr<Server> server;
 static CefRefPtr<BrowserApp> app;
@@ -182,9 +186,10 @@ void ExecuteOnBrowser(BrowserFunc func, CefRefPtr<CefBrowser> cefBrowser, bool a
 }
 
 // Logic and data behind the server's behavior.
-class BrowserServerServiceImpl final : public BrowserServer::Service {
-	Status IntializeBrowserCEF(ServerContext* context, const Request* request,
-					NoReply* reply) override {
+class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
+	ServerUnaryReactor* IntializeBrowserCEF(
+		CallbackServerContext* context, const Request* request,
+		NoReply* reply) override {
 		auto binded_fn = std::bind(BrowserManagerThread,
 			request->obs_version(),
 			request->obs_locale(),
@@ -193,11 +198,15 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 			request->hwaccel()
 		);
 		manager_thread = std::thread(binded_fn);
-		return Status::OK;
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status CreateBrowserSource(ServerContext* context, const CreateRequest* request,
-					NoReply* reply) override {
+	ServerUnaryReactor* CreateBrowserSource(
+		CallbackServerContext* context, const CreateRequest* request,
+		NoReply* reply) override {
 		uint64_t id = request->id();
 		bool hwaccel = request->hwaccel();
 		bool reroute_audio = request->reroute_audio();
@@ -261,14 +270,20 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 			args2->SetBool(0, true);
 			SendBrowserProcessMessage(browserClients[id]->cefBrowser, PID_RENDERER, msg2);
 		});
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SetShowing(ServerContext* context, const SetShowingRequest* request,
-					NoReply* reply) override {
+	ServerUnaryReactor* SetShowing(
+		CallbackServerContext* context, const SetShowingRequest* request,
+		NoReply* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
@@ -281,23 +296,21 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				SendBrowserProcessMessage(cefBrowser,
 							  PID_RENDERER, msg);
 			}, browserClients[request->id()]->cefBrowser, true);
-		// Json json = Json::object{{"visible", showing}};
-// 		DispatchJSEvent("obsSourceVisibleChanged", json.dump(), this);
-// #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
-// 		if (showing && !fps_custom) {
-// 			reset_frame = false;
-// 		}
-// #endif
 
-// 		SendBrowserVisibility(cefBrowser, showing);
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SetActive(ServerContext* context, const SetActiveRequest* request,
-					NoReply* reply) override {
+	ServerUnaryReactor* SetActive(
+		CallbackServerContext* context, const SetActiveRequest* request,
+		NoReply* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
@@ -309,31 +322,44 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				SendBrowserProcessMessage(cefBrowser, PID_RENDERER,
 							msg);
 			}, browserClients[request->id()]->cefBrowser, true);
-		// Json json = Json::object{{"active", active}};
-		// DispatchJSEvent("obsSourceActiveChanged", json.dump(), this);
-		return Status::OK;
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status Refresh(ServerContext* context, const IdRequest* request,
-					NoReply* reply) override {
+	ServerUnaryReactor* Refresh(
+		CallbackServerContext* context, const IdRequest* request,
+		NoReply* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		ExecuteOnBrowser(
 			[](CefRefPtr<CefBrowser> cefBrowser) {
 				cefBrowser->ReloadIgnoreCache();
 			}, browserClients[request->id()]->cefBrowser, true);
-		return Status::OK;
+
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SignalBeginFrame(ServerContext* context,
+	ServerUnaryReactor* SignalBeginFrame(
+		CallbackServerContext* context,
 		const IdRequest* request,
 		SignalBeginFrameResponse* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		// if (reset_frame) {
@@ -347,15 +373,23 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 			reply->set_shared_handle(
 				(int64_t) browserClients[request->id()]->last_handle
 			);
-		return Status::OK;
+
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status DestroyBrowserSource(ServerContext* context,
+	ServerUnaryReactor* DestroyBrowserSource(
+		CallbackServerContext* context,
 		const DestroyBrowserSourceRequest* request,
 		NoReply* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		ExecuteOnBrowser(
 			[](CefRefPtr<CefBrowser> cefBrowser) {
@@ -370,10 +404,14 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 
 		browserClients[request->id()]->cefBrowser = nullptr;
 		browserClients.erase(browserClients.find(request->id()));
-		return Status::OK;
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status ShutdownBrowserCEF(ServerContext* context,
+	ServerUnaryReactor* ShutdownBrowserCEF(
+		CallbackServerContext* context,
 		const NoArgs* request,
 		NoReply* reply) override {
 		if (manager_thread.joinable()) {
@@ -384,16 +422,23 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 		}
 		
 		shutdown_thread = new std::thread(ShutdownServer);
-		return Status::OK;
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SendMouseClick(ServerContext* context,
+	ServerUnaryReactor* SendMouseClick(
+		CallbackServerContext* context,
 		const MouseEventRequest* request,
 		NoReply* reply) override {
 
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 
@@ -415,16 +460,23 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				cefBrowser->GetHost()->SendMouseClickEvent(
 					e, buttonType, mouse_up, click_count);
 			}, browserClients[request->id()]->cefBrowser, true);
-		return Status::OK;
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SendMouseMove(ServerContext* context,
+	ServerUnaryReactor* SendMouseMove(
+		CallbackServerContext* context,
 		const MouseEventRequest* request,
 		NoReply* reply) override {
 
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 
@@ -443,16 +495,22 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 									mouse_leave);
 			}, browserClients[request->id()]->cefBrowser, true);
 
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SendMouseWheel(ServerContext* context,
+	ServerUnaryReactor* SendMouseWheel(
+		CallbackServerContext* context,
 		const MouseEventRequest* request,
 		NoReply* reply) override {
 
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 
@@ -472,16 +530,22 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 									y_delta);
 			}, browserClients[request->id()]->cefBrowser, true);
 
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SendFocus(ServerContext* context,
+	ServerUnaryReactor* SendFocus(
+		CallbackServerContext* context,
 		const MouseEventRequest* request,
 		NoReply* reply) override {
 
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 
@@ -492,16 +556,22 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				cefBrowser->GetHost()->SendFocusEvent(focus);
 			}, browserClients[request->id()]->cefBrowser, true);
 
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
 	}
 
-	Status SendKeyClick(ServerContext* context,
+	ServerUnaryReactor* SendKeyClick(
+		CallbackServerContext* context,
 		const MouseEventRequest* request,
 		NoReply* reply) override {
 
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
-		if (!browserClients[request->id()])
-			return Status::OK;
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 
@@ -553,9 +623,48 @@ class BrowserServerServiceImpl final : public BrowserServer::Service {
 				}
 			}, browserClients[request->id()]->cefBrowser, true);
 
-		return Status::OK;
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
+	}
+
+	ServerUnaryReactor* OnAudioStreamStarted(
+		CallbackServerContext* context,
+		const IdRequest* request,
+		OnAudioStreamStartedReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		browserClients[request->id()]->OnAudioStreamStarted_reactor = context->DefaultReactor();
+		browserClients[request->id()]->OnAudioStreamStarted_reply = reply;
+		return browserClients[request->id()]->OnAudioStreamStarted_reactor;
+	}
+
+	ServerUnaryReactor* OnAudioStreamPacket(
+		CallbackServerContext* context,
+		const OnAudioStreamPacketRequest* request,
+		OnAudioStreamPacketReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
+		
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		browserClients[request->id()]->OnAudioStreamPacket_requested = true;
+		browserClients[request->id()]->channels = request->channels();
+		browserClients[request->id()]->OnAudioStreamPacket_reactor = context->DefaultReactor();
+		browserClients[request->id()]->OnAudioStreamPacket_reply = reply;
+		return browserClients[request->id()]->OnAudioStreamPacket_reactor;
 	}
 };
+
 
 void RunServer() {
   std::string server_address("0.0.0.0:50051");

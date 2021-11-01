@@ -18,14 +18,25 @@
 
 #pragma once
 
+#include <grpcpp/grpcpp.h>
+
+#ifdef BAZEL_BUILD
+#include "examples/protos/helloworld.grpc.pb.h"
+#else
+#include "helloworld.grpc.pb.h"
+#endif
+
 #include <graphics/graphics.h>
 #include "cef-headers.hpp"
 // #include "browser-config.h"
 #include <mutex>
 
-#define USE_TEXTURE_COPY 0
+using grpc::ServerUnaryReactor;
+using grpc::Status;
+using helloworld::OnAudioStreamStartedReply;
+using helloworld::OnAudioStreamPacketReply;
 
-// struct BrowserSource;
+#define USE_TEXTURE_COPY 0
 
 class BrowserClient : public CefClient,
 		      public CefDisplayHandler,
@@ -40,7 +51,6 @@ class BrowserClient : public CefClient,
 	bool sharing_available = false;
 
 public:
-	// BrowserSource *bs;
 	CefRect popupRect;
 	CefRect originalPopupRect;
 
@@ -55,16 +65,19 @@ public:
 #endif
 // #endif
 
-	// bool hwaccel;
 	uint32_t width;
 	uint32_t height;
-	// uint32_t fps;
-	// bool fps_custom;
-	// uint32_t video_fps;
-	// std::string url;
 	bool reroute_audio;
 	CefRefPtr<CefBrowser> cefBrowser;
 	std::mutex browser_mtx;
+	int32_t channels;
+
+	ServerUnaryReactor* OnAudioStreamStarted_reactor = nullptr;
+	OnAudioStreamStartedReply* OnAudioStreamStarted_reply = nullptr;
+
+	ServerUnaryReactor* OnAudioStreamPacket_reactor = nullptr;
+	OnAudioStreamPacketReply* OnAudioStreamPacket_reply = nullptr;
+	bool OnAudioStreamPacket_requested = false;
 
 #if CHROME_VERSION_BUILD >= 4103
 	int sample_rate;

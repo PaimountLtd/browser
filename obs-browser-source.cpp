@@ -142,6 +142,83 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 	}
 }
 
+#if CHROME_VERSION_BUILD >= 3683
+static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
+{
+	switch (cefLayout) {
+	case CEF_CHANNEL_LAYOUT_MONO:
+		return SPEAKERS_MONO; /**< Channels: MONO */
+	case CEF_CHANNEL_LAYOUT_STEREO:
+		return SPEAKERS_STEREO; /**< Channels: FL, FR */
+	case CEF_CHANNEL_LAYOUT_2POINT1:
+		return SPEAKERS_2POINT1; /**< Channels: FL, FR, LFE */
+	case CEF_CHANNEL_LAYOUT_2_2:
+	case CEF_CHANNEL_LAYOUT_QUAD:
+	case CEF_CHANNEL_LAYOUT_4_0:
+		return SPEAKERS_4POINT0; /**< Channels: FL, FR, FC, RC */
+	case CEF_CHANNEL_LAYOUT_4_1:
+		return SPEAKERS_4POINT1; /**< Channels: FL, FR, FC, LFE, RC */
+	case CEF_CHANNEL_LAYOUT_5_1:
+	case CEF_CHANNEL_LAYOUT_5_1_BACK:
+		return SPEAKERS_5POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR */
+	case CEF_CHANNEL_LAYOUT_7_1:
+	case CEF_CHANNEL_LAYOUT_7_1_WIDE_BACK:
+	case CEF_CHANNEL_LAYOUT_7_1_WIDE:
+		return SPEAKERS_7POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR, SL, SR */
+	default:
+		return SPEAKERS_UNKNOWN;
+	}
+}
+#endif
+
+void BrowserSource::OnAudioStreamStarted(int id,
+					 int channel_layout,
+					 int sample_rate)
+{
+	this->id = id;
+	AudioStream &stream = audio_streams[id];
+	if (!stream.source) {
+		stream.source = obs_source_create_private("audio_line", nullptr,
+							  nullptr);
+		obs_source_release(stream.source);
+
+		obs_source_add_active_child(source, stream.source);
+
+		std::lock_guard<std::mutex> lock(audio_sources_mutex);
+		audio_sources.push_back(stream.source);
+	}
+
+	stream.speakers = GetSpeakerLayout((CefAudioHandler::ChannelLayout)channel_layout);
+	stream.channels = get_audio_channels(stream.speakers);
+	stream.sample_rate = sample_rate;
+}
+
+void BrowserSource::OnAudioStreamPacket(
+	::google::protobuf::RepeatedPtrField<string>* data,
+	int32_t frames, int64_t pts)
+{
+	AudioStream &stream = audio_streams[this->id];
+	struct obs_source_audio audio = {};
+
+	std::vector<std::string> buffers(MAX_AV_PLANES);
+	for (int i = 0; i < data->size(); i++) {
+		buffers[i] = data->at(i);
+		if (buffers[i].empty()) {
+			continue;
+		}
+		
+		audio.data[i] = (const uint8_t *)buffers[i].data();
+	}
+
+	audio.samples_per_sec = stream.sample_rate;
+	audio.frames = frames;
+	audio.format = AUDIO_FORMAT_FLOAT_PLANAR;
+	audio.speakers = stream.speakers;
+	audio.timestamp = (uint64_t)pts * 1000000LLU;
+
+	obs_source_output_audio(stream.source, &audio);
+}
+
 bool BrowserSource::CreateBrowser()
 {
 	bc->CreateBrowserSource(
@@ -149,6 +226,9 @@ bool BrowserSource::CreateBrowser()
 		width, height, fps, fps_custom,
 		obs_get_active_fps(), url
 	);
+
+	bc->OnAudioStreamStarted(this);
+
 	return true;
 }
 

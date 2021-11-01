@@ -45,6 +45,7 @@ struct AudioStream {
 };
 #endif
 
+class BrowserGRPCClient;
 extern BrowserGRPCClient* bc;
 
 struct BrowserSource {
@@ -74,6 +75,7 @@ struct BrowserSource {
 	bool reset_frame = false;
 #endif
 	bool is_showing = false;
+	int id = 0;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #if USE_TEXTURE_COPY
@@ -130,6 +132,10 @@ struct BrowserSource {
 	void SetShowing(bool showing);
 	void SetActive(bool active);
 	void Refresh();
+
+	void OnAudioStreamStarted(int id, int channel_layout, int sample_rate);
+	void OnAudioStreamPacket(
+		::google::protobuf::RepeatedPtrField<std::string>* data, int32_t frames, int64_t pts);
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	inline void SignalBeginFrame();

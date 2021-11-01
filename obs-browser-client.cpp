@@ -1,6 +1,6 @@
-  #include "obs-browser-client.hpp"
+#include "obs-browser-client.hpp"
 
- void BrowserGRPCClient::IntializeBrowserCEF() {
+void BrowserGRPCClient::IntializeBrowserCEF() {
 	uint32_t obs_version = obs_get_version();
 	std::string obs_locale = obs_get_locale();
 	std::string bin_path = obs_get_module_binary_path(obs_current_module());
@@ -189,4 +189,40 @@ void BrowserGRPCClient::SendKeyClick(
   NoReply reply;
   ClientContext context;
   stub_->SendKeyClick(&context, request, &reply);
+}
+
+void BrowserGRPCClient::OnAudioStreamStarted(BrowserSource* bs) {
+  IdRequest* request = new IdRequest();
+  request->set_id((uint64_t) &bs->source);
+  OnAudioStreamStartedReply* reply = new OnAudioStreamStartedReply();
+  ClientContext* context = new ClientContext();
+
+  stub_->async()->OnAudioStreamStarted(context, request, reply,
+                             [bs, reply, this](Status s) {
+                               bs->OnAudioStreamStarted(
+                                 reply->id(),
+                                 reply->channel_layout(),
+                                 reply->sample_rate()
+                               );
+                               OnAudioStreamPacket(bs);
+                            });
+}
+
+void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
+  OnAudioStreamPacketRequest* request = new OnAudioStreamPacketRequest();
+  request->set_id((uint64_t) &bs->source);
+  if (bs->reroute_audio)
+    request->set_channels(bs->audio_streams[bs->id].channels);
+  OnAudioStreamPacketReply* reply = new OnAudioStreamPacketReply();
+  ClientContext* context = new ClientContext();
+
+  stub_->async()->OnAudioStreamPacket(context, request, reply,
+                             [bs, reply, this](Status s) {
+                               OnAudioStreamPacket(bs);
+                                bs->OnAudioStreamPacket(
+                                 reply->mutable_data(),
+                                 reply->frames(),
+                                 reply->pts()
+                               );
+                            });
 }
