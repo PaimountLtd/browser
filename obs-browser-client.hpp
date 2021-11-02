@@ -33,13 +33,14 @@ using helloworld::CreateRequest;
 using helloworld::SetShowingRequest;
 using helloworld::SetActiveRequest;
 using helloworld::NoArgs;
-using helloworld::SignalBeginFrameResponse;
+using helloworld::SignalBeginFrameReply;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
 using helloworld::MouseEventRequest;
 using helloworld::OnAudioStreamStartedReply;
 using helloworld::OnAudioStreamPacketReply;
 using helloworld::OnAudioStreamPacketRequest;
+using helloworld::OnAudioStreamStoppedReply;
 
 extern bool hwaccel;
 
@@ -47,6 +48,8 @@ struct BrowserSource;
 
 class BrowserGRPCClient {
 public:
+  std::mutex mtx;
+  bool active;
 	BrowserGRPCClient(std::shared_ptr<Channel> channel)
       : stub_(BrowserServer::NewStub(channel)) {}
 
@@ -54,12 +57,12 @@ public:
   void CreateBrowserSource(
       uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,
       int height, int fps, bool fps_custom, int video_fps,
-      std::string url
+      std::string url, std::string css
   );
   void SetShowing(uint64_t sourceId, bool showing);
   void SetActive(uint64_t sourceId, bool active);
   void Refresh(uint64_t sourceId);
-  void* SignalBeginFrame(uint64_t sourceId);
+  void SignalBeginFrame(BrowserSource* bs);
   void DestroyBrowserSource(uint64_t sourceId, bool async);
   void ShutdownBrowserCEF();
   
@@ -96,6 +99,7 @@ public:
 
   void OnAudioStreamStarted(BrowserSource* bs);
   void OnAudioStreamPacket(BrowserSource* bs);
+  void OnAudioStreamStopped(BrowserSource* bs);
 
 private:
   std::unique_ptr<BrowserServer::Stub> stub_;

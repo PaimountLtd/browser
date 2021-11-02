@@ -35,7 +35,7 @@ using helloworld::CreateRequest;
 using helloworld::SetShowingRequest;
 using helloworld::SetActiveRequest;
 using helloworld::NoArgs;
-using helloworld::SignalBeginFrameResponse;
+using helloworld::SignalBeginFrameReply;
 using helloworld::IdRequest;
 using helloworld::DestroyBrowserSourceRequest;
 using helloworld::MouseEventRequest;
@@ -216,9 +216,10 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		bool fps_custom = request->fps_custom();
 		uint32_t video_fps = request->video_fps();
 		std::string url = request->url();
+		std::string css = request->css();
 		QueueCEFTask([this, id, hwaccel, reroute_audio,
 			width, height, fps, fps_custom,
-			video_fps, url]() {
+			video_fps, url, css]() {
 			std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 
 			browserClients.insert_or_assign(
@@ -235,6 +236,7 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			browserClients[id]->width = width;
 			browserClients[id]->height = height;
 			browserClients[id]->reroute_audio = reroute_audio;
+			browserClients[id]->css = css;
 
 			CefBrowserSettings cefBrowserSettings;
 			if (!fps_custom) {
@@ -353,7 +355,7 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 	ServerUnaryReactor* SignalBeginFrame(
 		CallbackServerContext* context,
 		const IdRequest* request,
-		SignalBeginFrameResponse* reply) override {
+		SignalBeginFrameReply* reply) override {
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 		if (!browserClients[request->id()]) {
 			ServerUnaryReactor* reactor = context->DefaultReactor();
@@ -362,22 +364,23 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
-		// if (reset_frame) {
-			ExecuteOnBrowser(
-				[](CefRefPtr<CefBrowser> cefBrowser) {
-					cefBrowser->GetHost()->SendExternalBeginFrame();
-				}, browserClients[request->id()]->cefBrowser, true);
+		ExecuteOnBrowser(
+			[](CefRefPtr<CefBrowser> cefBrowser) {
+				cefBrowser->GetHost()->SendExternalBeginFrame();
+			}, browserClients[request->id()]->cefBrowser, true);
 
-			// reset_frame = false;
-		// }
-			reply->set_shared_handle(
-				(int64_t) browserClients[request->id()]->last_handle
-			);
+		browserClients[request->id()]->SignalBeginFrame_requested = true;
+		browserClients[request->id()]->SignalBeginFrame_reactor = context->DefaultReactor();
+		browserClients[request->id()]->SignalBeginFrame_reply = reply;
+		return browserClients[request->id()]->SignalBeginFrame_reactor;
+		// reply->set_shared_handle(
+		// 	(int64_t) browserClients[request->id()]->last_handle
+		// );
 
 
-		ServerUnaryReactor* reactor = context->DefaultReactor();
-		reactor->Finish(Status::OK);
-		return reactor;
+		// ServerUnaryReactor* reactor = context->DefaultReactor();
+		// reactor->Finish(Status::OK);
+		// return reactor;
 	}
 
 	ServerUnaryReactor* DestroyBrowserSource(
@@ -662,6 +665,23 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		browserClients[request->id()]->OnAudioStreamPacket_reactor = context->DefaultReactor();
 		browserClients[request->id()]->OnAudioStreamPacket_reply = reply;
 		return browserClients[request->id()]->OnAudioStreamPacket_reactor;
+	}
+
+	ServerUnaryReactor* OnAudioStreamStopped(
+		CallbackServerContext* context,
+		const IdRequest* request,
+		OnAudioStreamStoppedReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
+		
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		browserClients[request->id()]->OnAudioStreamStopped_reactor = context->DefaultReactor();
+		browserClients[request->id()]->OnAudioStreamStopped_reply = reply;
+		return browserClients[request->id()]->OnAudioStreamStopped_reactor;
 	}
 };
 

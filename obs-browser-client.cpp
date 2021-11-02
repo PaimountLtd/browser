@@ -51,7 +51,8 @@ void BrowserGRPCClient::IntializeBrowserCEF() {
 void BrowserGRPCClient::CreateBrowserSource(
     uint64_t sourceId, bool hwaccel, bool reroute_audio,
     int width, int height, int fps, bool fps_custom,
-    int video_fps, std::string url) {
+    int video_fps, std::string url, std::string css) {
+  std::lock_guard<std::mutex> lock(mtx);
   CreateRequest request;
   request.set_id(sourceId);
   request.set_hwaccel(hwaccel);
@@ -62,10 +63,12 @@ void BrowserGRPCClient::CreateBrowserSource(
   request.set_fps_custom(fps_custom);
   request.set_video_fps(video_fps);
   request.set_url(url);
+  request.set_css(css);
 
   NoReply reply;
   ClientContext context;
   stub_->CreateBrowserSource(&context, request, &reply);
+  active = true;
 }
 
 void BrowserGRPCClient::SetShowing(uint64_t sourceId, bool showing) {
@@ -96,22 +99,36 @@ void BrowserGRPCClient::Refresh(uint64_t sourceId) {
   stub_->Refresh(&context, request, &reply);
 }
 
-void* BrowserGRPCClient::SignalBeginFrame(uint64_t sourceId) {
-  IdRequest request;
-  request.set_id(sourceId);
-  SignalBeginFrameResponse reply;
-  ClientContext context;
-  stub_->SignalBeginFrame(&context, request, &reply);
-  return (void*)reply.shared_handle();
+// void* BrowserGRPCClient::SignalBeginFrame(uint64_t sourceId) {
+//   IdRequest request;
+//   request.set_id(sourceId);
+//   SignalBeginFrameResponse reply;
+//   ClientContext context;
+//   stub_->SignalBeginFrame(&context, request, &reply);
+//   return (void*)reply.shared_handle();
+// }
+
+void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
+  IdRequest* request = new IdRequest();
+  request->set_id((uint64_t) &bs->source);
+
+  SignalBeginFrameReply* reply = new SignalBeginFrameReply();
+  ClientContext* context = new ClientContext();
+  stub_->async()->SignalBeginFrame(context, request, reply,
+                            [bs, reply, this](Status s) {
+                              bs->RenderSharedTexture((void*)reply->shared_handle());
+                          });
 }
 
 void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {
+  std::lock_guard<std::mutex> lock(mtx);
   DestroyBrowserSourceRequest request;
   request.set_id(sourceId);
   request.set_async(async);
   NoReply reply;
   ClientContext context;
   stub_->DestroyBrowserSource(&context, request, &reply);
+  active = false;
 }
 
 void BrowserGRPCClient::ShutdownBrowserCEF() {
@@ -205,6 +222,7 @@ void BrowserGRPCClient::OnAudioStreamStarted(BrowserSource* bs) {
                                  reply->sample_rate()
                                );
                                OnAudioStreamPacket(bs);
+                               OnAudioStreamStopped(bs);
                             });
 }
 
@@ -218,11 +236,33 @@ void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
 
   stub_->async()->OnAudioStreamPacket(context, request, reply,
                              [bs, reply, this](Status s) {
-                               OnAudioStreamPacket(bs);
-                                bs->OnAudioStreamPacket(
-                                 reply->mutable_data(),
-                                 reply->frames(),
-                                 reply->pts()
-                               );
+                               std::lock_guard<std::mutex> lock(mtx);
+                                if (active) {
+                                  OnAudioStreamPacket(bs);
+                                  bs->OnAudioStreamPacket(
+                                    reply->mutable_data(),
+                                    reply->frames(),
+                                    reply->pts()
+                                  );
+                                }
+                            });
+}
+
+void BrowserGRPCClient::OnAudioStreamStopped(BrowserSource* bs) {
+  IdRequest* request = new IdRequest();
+  request->set_id((uint64_t) &bs->source);
+
+  OnAudioStreamStoppedReply* reply =
+    new OnAudioStreamStoppedReply();
+  ClientContext* context = new ClientContext();
+
+  stub_->async()->OnAudioStreamStopped(context, request, reply,
+                             [bs, reply, this](Status s) {
+                                if (active) {
+                                  bs->OnAudioStreamStopped(
+                                    reply->id()
+                                  );
+                                  OnAudioStreamStarted(bs);
+                                }
                             });
 }

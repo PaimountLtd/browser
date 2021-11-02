@@ -136,9 +136,11 @@ struct BrowserSource {
 	void OnAudioStreamStarted(int id, int channel_layout, int sample_rate);
 	void OnAudioStreamPacket(
 		::google::protobuf::RepeatedPtrField<std::string>* data, int32_t frames, int64_t pts);
+	void OnAudioStreamStopped(int id);
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	inline void SignalBeginFrame();
+	void RenderSharedTexture(void* shared_handle);
 #endif
 };
 #endif

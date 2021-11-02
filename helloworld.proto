@@ -13,7 +13,7 @@ service BrowserServer {
   rpc SetShowing (SetShowingRequest) returns (NoReply) {};
   rpc SetActive (SetActiveRequest) returns (NoReply) {};
   rpc Refresh (IdRequest) returns (NoReply) {};
-  rpc SignalBeginFrame (IdRequest) returns (SignalBeginFrameResponse) {};
+  rpc SignalBeginFrame (IdRequest) returns (SignalBeginFrameReply) {};
   rpc DestroyBrowserSource (DestroyBrowserSourceRequest) returns (NoReply) {};
   rpc ShutdownBrowserCEF (NoArgs) returns (NoReply) {};
   rpc SendMouseClick (MouseEventRequest) returns (NoReply) {};
@@ -23,6 +23,7 @@ service BrowserServer {
   rpc SendKeyClick (MouseEventRequest) returns (NoReply) {};
   rpc OnAudioStreamStarted (IdRequest) returns (OnAudioStreamStartedReply);
   rpc OnAudioStreamPacket (OnAudioStreamPacketRequest) returns (OnAudioStreamPacketReply);
+  rpc OnAudioStreamStopped (IdRequest) returns (OnAudioStreamStoppedReply);
 }
 
 message Request {
@@ -43,6 +44,7 @@ message CreateRequest {
   bool fps_custom = 7;
   int32 video_fps = 8;
   string url = 9;
+  string css = 10;
 }
 
 message SetShowingRequest {
@@ -67,7 +69,7 @@ message NoReply {
 
 }
 
-message SignalBeginFrameResponse {
+message SignalBeginFrameReply {
   int64 shared_handle = 1;
 }
 
@@ -109,4 +111,8 @@ message OnAudioStreamPacketReply {
   repeated bytes data = 1;
   int32 frames = 2;
   int64 pts = 3;
+}
+
+message OnAudioStreamStoppedReply {
+  int32 id = 1;
 }

@@ -220,8 +220,16 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
 				       const RectList &, void *shared_handle)
 {
-	if (shared_handle != last_handle)
-		last_handle = shared_handle;
+	std::lock_guard<std::mutex> lock_client(browser_mtx);
+	if (SignalBeginFrame_requested) {
+		SignalBeginFrame_reply->set_shared_handle((int64_t) shared_handle);
+
+		SignalBeginFrame_requested = false;
+		SignalBeginFrame_reactor->Finish(Status::OK);
+	}
+
+	// if (shared_handle != last_handle) 
+	// 	last_handle = shared_handle;
 
 	// 	if (!bs) {
 // 		return;
@@ -389,26 +397,6 @@ void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser, int id,
 	OnAudioStreamStarted_reply->set_channel_layout((int32_t)channel_layout);
 	OnAudioStreamStarted_reply->set_sample_rate((int32_t)sample_rate);
 	OnAudioStreamStarted_reactor->Finish(Status::OK);
-	// UNUSED_PARAMETER(browser);
-	// if (!bs) {
-	// 	return;
-	// }
-
-	// AudioStream &stream = bs->audio_streams[id];
-	// if (!stream.source) {
-	// 	stream.source = obs_source_create_private("audio_line", nullptr,
-	// 						  nullptr);
-	// 	obs_source_release(stream.source);
-
-	// 	obs_source_add_active_child(bs->source, stream.source);
-
-	// 	std::lock_guard<std::mutex> lock(bs->audio_sources_mutex);
-	// 	bs->audio_sources.push_back(stream.source);
-	// }
-
-	// stream.speakers = GetSpeakerLayout(channel_layout);
-	// stream.channels = get_audio_channels(stream.speakers);
-	// stream.sample_rate = sample_rate;
 }
 
 void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
@@ -437,74 +425,30 @@ void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
 	} else {
 		std::cout << "packet dropped" << std::endl;
 	}
-	// UNUSED_PARAMETER(browser);
-	// if (!bs) {
-	// 	return;
-	// }
-
-	// AudioStream &stream = bs->audio_streams[id];
-	// struct obs_source_audio audio = {};
-
-	// const uint8_t **pcm = (const uint8_t **)data;
-	// for (int i = 0; i < stream.channels; i++)
-	// 	audio.data[i] = pcm[i];
-
-	// audio.samples_per_sec = stream.sample_rate;
-	// audio.frames = frames;
-	// audio.format = AUDIO_FORMAT_FLOAT_PLANAR;
-	// audio.speakers = stream.speakers;
-	// audio.timestamp = (uint64_t)pts * 1000000LLU;
-
-	// obs_source_output_audio(stream.source, &audio);
 }
 
 void BrowserClient::OnAudioStreamStopped(CefRefPtr<CefBrowser> browser, int id)
 {
-	// UNUSED_PARAMETER(browser);
-	// if (!bs) {
-	// 	return;
-	// }
-
-	// auto pair = bs->audio_streams.find(id);
-	// if (pair == bs->audio_streams.end()) {
-	// 	return;
-	// }
-
-	// AudioStream &stream = pair->second;
-	// {
-	// 	std::lock_guard<std::mutex> lock(bs->audio_sources_mutex);
-	// 	for (size_t i = 0; i < bs->audio_sources.size(); i++) {
-	// 		obs_source_t *source = bs->audio_sources[i];
-	// 		if (source == stream.source) {
-	// 			bs->audio_sources.erase(
-	// 				bs->audio_sources.begin() + i);
-	// 			break;
-	// 		}
-	// 	}
-	// }
-	// bs->audio_streams.erase(pair);
+	OnAudioStreamStopped_reply->set_id(id);
+	OnAudioStreamStopped_reactor->Finish(Status::OK);
 }
 #endif
 
 void BrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame,
 			      int)
 {
-	// if (!bs) {
-	// 	return;
-	// }
+	if (frame->IsMain() && css.length()) {
+		std::string uriEncodedCSS =
+			CefURIEncode(css, false).ToString();
 
-	// if (frame->IsMain() && bs->css.length()) {
-	// 	std::string uriEncodedCSS =
-	// 		CefURIEncode(bs->css, false).ToString();
+		std::string script;
+		script += "const obsCSS = document.createElement('style');";
+		script += "obsCSS.innerHTML = decodeURIComponent(\"" +
+			  uriEncodedCSS + "\");";
+		script += "document.querySelector('head').appendChild(obsCSS);";
 
-	// 	std::string script;
-	// 	script += "const obsCSS = document.createElement('style');";
-	// 	script += "obsCSS.innerHTML = decodeURIComponent(\"" +
-	// 		  uriEncodedCSS + "\");";
-	// 	script += "document.querySelector('head').appendChild(obsCSS);";
-
-	// 	frame->ExecuteJavaScript(script, "", 0);
-	// }
+		frame->ExecuteJavaScript(script, "", 0);
+	}
 }
 
 bool BrowserClient::OnConsoleMessage(CefRefPtr<CefBrowser>,

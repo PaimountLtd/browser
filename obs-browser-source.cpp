@@ -219,15 +219,38 @@ void BrowserSource::OnAudioStreamPacket(
 	obs_source_output_audio(stream.source, &audio);
 }
 
+void BrowserSource::OnAudioStreamStopped(int id)
+{
+	auto pair = audio_streams.find(id);
+	if (pair == audio_streams.end()) {
+		return;
+	}
+
+	AudioStream &stream = pair->second;
+	{
+		std::lock_guard<std::mutex> lock(audio_sources_mutex);
+		for (size_t i = 0; i < audio_sources.size(); i++) {
+			obs_source_t *source = audio_sources[i];
+			if (source == stream.source) {
+				audio_sources.erase(
+					audio_sources.begin() + i);
+				break;
+			}
+		}
+	}
+	audio_streams.erase(pair);
+}
+
 bool BrowserSource::CreateBrowser()
 {
 	bc->CreateBrowserSource(
 		(uint64_t) &source, hwaccel, reroute_audio, 
 		width, height, fps, fps_custom,
-		obs_get_active_fps(), url
+		obs_get_active_fps(), url, css
 	);
 
-	bc->OnAudioStreamStarted(this);
+	if (reroute_audio)
+		bc->OnAudioStreamStarted(this);
 
 	return true;
 }
@@ -334,25 +357,48 @@ void BrowserSource::Refresh()
 }
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
+
+void BrowserSource::RenderSharedTexture(void* shared_handle)
+{
+	if (!reset_frame)
+		return;
+
+	if (shared_handle && this->last_handle != shared_handle) {
+		obs_enter_graphics();
+
+		gs_texture_destroy(this->texture);
+		this->texture = nullptr;
+
+		this->texture = gs_texture_open_shared(
+			(uint32_t)(uintptr_t)shared_handle);
+
+		obs_leave_graphics();
+		last_handle = shared_handle;
+	}
+
+	reset_frame = false;
+}
+
 inline void BrowserSource::SignalBeginFrame()
 {
-	if (reset_frame) {
-		void* shared_handle = bc->SignalBeginFrame((uint64_t) &source);
-		if (shared_handle && this->last_handle != shared_handle) {
-			obs_enter_graphics();
+	bc->SignalBeginFrame(this);
+	// if (reset_frame) {
+	// 	void* shared_handle = bc->SignalBeginFrame((uint64_t) &source);
+	// 	if (shared_handle && this->last_handle != shared_handle) {
+	// 		obs_enter_graphics();
 
-			gs_texture_destroy(this->texture);
-			this->texture = nullptr;
+	// 		gs_texture_destroy(this->texture);
+	// 		this->texture = nullptr;
 
-			this->texture = gs_texture_open_shared(
-				(uint32_t)(uintptr_t)shared_handle);
+	// 		this->texture = gs_texture_open_shared(
+	// 			(uint32_t)(uintptr_t)shared_handle);
 
-			obs_leave_graphics();
-			last_handle = shared_handle;
-		}
+	// 		obs_leave_graphics();
+	// 		last_handle = shared_handle;
+	// 	}
 
-		reset_frame = false;
-	}
+	// 	reset_frame = false;
+	// }
 }
 #endif
 #endif

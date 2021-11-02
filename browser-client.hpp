@@ -35,6 +35,8 @@ using grpc::ServerUnaryReactor;
 using grpc::Status;
 using helloworld::OnAudioStreamStartedReply;
 using helloworld::OnAudioStreamPacketReply;
+using helloworld::OnAudioStreamStoppedReply;
+using helloworld::SignalBeginFrameReply;
 
 #define USE_TEXTURE_COPY 0
 
@@ -79,12 +81,18 @@ public:
 	OnAudioStreamPacketReply* OnAudioStreamPacket_reply = nullptr;
 	bool OnAudioStreamPacket_requested = false;
 
-#if CHROME_VERSION_BUILD >= 4103
+	ServerUnaryReactor* OnAudioStreamStopped_reactor = nullptr;
+	OnAudioStreamStoppedReply* OnAudioStreamStopped_reply = nullptr;
+
+	ServerUnaryReactor* SignalBeginFrame_reactor = nullptr;
+	SignalBeginFrameReply* SignalBeginFrame_reply = nullptr;
+	bool SignalBeginFrame_requested = false;
+
 	int sample_rate;
-	int channels;
 	ChannelLayout channel_layout;
 	int frames_per_buffer;
-#endif
+	std::string css;
+
 	// inline BrowserClient(BrowserSource *bs_, bool sharing_avail,
 	// 		     bool reroute_audio_)
 	// 	: sharing_available(sharing_avail),
