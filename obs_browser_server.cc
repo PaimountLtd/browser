@@ -57,10 +57,6 @@ static void BrowserShutdown(void)
 
 static void ShutdownServer(void)
 {
-	// auto deadline =
-	// 	std::chrono::system_clock::now() +
-    // 	std::chrono::milliseconds(500);
-	// server->Shutdown(deadline);
 	server->Shutdown();
 }
 
