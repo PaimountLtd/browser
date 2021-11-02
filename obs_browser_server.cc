@@ -57,6 +57,10 @@ static void BrowserShutdown(void)
 
 static void ShutdownServer(void)
 {
+	// auto deadline =
+	// 	std::chrono::system_clock::now() +
+    // 	std::chrono::milliseconds(500);
+	// server->Shutdown(deadline);
 	server->Shutdown();
 }
 
@@ -373,14 +377,6 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		browserClients[request->id()]->SignalBeginFrame_reactor = context->DefaultReactor();
 		browserClients[request->id()]->SignalBeginFrame_reply = reply;
 		return browserClients[request->id()]->SignalBeginFrame_reactor;
-		// reply->set_shared_handle(
-		// 	(int64_t) browserClients[request->id()]->last_handle
-		// );
-
-
-		// ServerUnaryReactor* reactor = context->DefaultReactor();
-		// reactor->Finish(Status::OK);
-		// return reactor;
 	}
 
 	ServerUnaryReactor* DestroyBrowserSource(
@@ -645,6 +641,7 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		browserClients[request->id()]->OnAudioStreamStarted_reactor = context->DefaultReactor();
 		browserClients[request->id()]->OnAudioStreamStarted_reply = reply;
+		browserClients[request->id()]->OnAudioStreamStarted_pending = true;
 		return browserClients[request->id()]->OnAudioStreamStarted_reactor;
 	}
 
@@ -681,6 +678,7 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
 		browserClients[request->id()]->OnAudioStreamStopped_reactor = context->DefaultReactor();
 		browserClients[request->id()]->OnAudioStreamStopped_reply = reply;
+		browserClients[request->id()]->OnAudioStreamStopped_pending = true;
 		return browserClients[request->id()]->OnAudioStreamStopped_reactor;
 	}
 };

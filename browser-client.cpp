@@ -29,6 +29,16 @@ using namespace json11;
 
 BrowserClient::~BrowserClient()
 {
+	std::lock_guard<std::mutex> lock_client(browser_mtx);
+	if (OnAudioStreamStarted_pending && OnAudioStreamStarted_reactor)
+		OnAudioStreamStarted_reactor->Finish(Status::OK);
+
+	if (OnAudioStreamStopped_pending && OnAudioStreamStopped_reactor)
+		OnAudioStreamStopped_reactor->Finish(Status::OK);
+
+	if (OnAudioStreamPacket_requested && OnAudioStreamPacket_reactor)
+		OnAudioStreamPacket_reactor->Finish(Status::OK);
+
 // #if defined(SHARED_TEXTURE_SUPPORT_ENABLED) && USE_TEXTURE_COPY
 // 	if (sharing_available) {
 // 		obs_enter_graphics();
@@ -390,6 +400,7 @@ void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser, int id,
 					 int, ChannelLayout channel_layout,
 					 int sample_rate, int)
 {
+	std::lock_guard<std::mutex> lock_client(browser_mtx);
 	if (!OnAudioStreamStarted_reactor || !OnAudioStreamStarted_reply)
 		return;
 
@@ -397,6 +408,7 @@ void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser, int id,
 	OnAudioStreamStarted_reply->set_channel_layout((int32_t)channel_layout);
 	OnAudioStreamStarted_reply->set_sample_rate((int32_t)sample_rate);
 	OnAudioStreamStarted_reactor->Finish(Status::OK);
+	OnAudioStreamStarted_pending = false;
 }
 
 void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
@@ -429,8 +441,12 @@ void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
 
 void BrowserClient::OnAudioStreamStopped(CefRefPtr<CefBrowser> browser, int id)
 {
+	if (!OnAudioStreamStopped_reactor || !OnAudioStreamStopped_reply)
+		return;
+
 	OnAudioStreamStopped_reply->set_id(id);
 	OnAudioStreamStopped_reactor->Finish(Status::OK);
+	OnAudioStreamStopped_pending = false;
 }
 #endif
 

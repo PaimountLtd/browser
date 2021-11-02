@@ -109,15 +109,15 @@ void BrowserGRPCClient::Refresh(uint64_t sourceId) {
 // }
 
 void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
-  IdRequest* request = new IdRequest();
-  request->set_id((uint64_t) &bs->source);
+  // IdRequest* request = new IdRequest();
+  // request->set_id((uint64_t) &bs->source);
 
-  SignalBeginFrameReply* reply = new SignalBeginFrameReply();
-  ClientContext* context = new ClientContext();
-  stub_->async()->SignalBeginFrame(context, request, reply,
-                            [bs, reply, this](Status s) {
-                              bs->RenderSharedTexture((void*)reply->shared_handle());
-                          });
+  // SignalBeginFrameReply* reply = new SignalBeginFrameReply();
+  // ClientContext* context = new ClientContext();
+  // stub_->async()->SignalBeginFrame(context, request, reply,
+  //                           [bs, reply, this](Status s) {
+  //                             bs->RenderSharedTexture((void*)reply->shared_handle());
+  //                         });
 }
 
 void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {

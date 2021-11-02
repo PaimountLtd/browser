@@ -76,6 +76,7 @@ public:
 
 	ServerUnaryReactor* OnAudioStreamStarted_reactor = nullptr;
 	OnAudioStreamStartedReply* OnAudioStreamStarted_reply = nullptr;
+	bool OnAudioStreamStarted_pending = false;
 
 	ServerUnaryReactor* OnAudioStreamPacket_reactor = nullptr;
 	OnAudioStreamPacketReply* OnAudioStreamPacket_reply = nullptr;
@@ -83,6 +84,7 @@ public:
 
 	ServerUnaryReactor* OnAudioStreamStopped_reactor = nullptr;
 	OnAudioStreamStoppedReply* OnAudioStreamStopped_reply = nullptr;
+	bool OnAudioStreamStopped_pending = false;
 
 	ServerUnaryReactor* SignalBeginFrame_reactor = nullptr;
 	SignalBeginFrameReply* SignalBeginFrame_reply = nullptr;
