@@ -66,7 +66,6 @@ struct BrowserSource {
 	bool is_media_flag = false;
 	bool first_update = true;
 	bool reroute_audio = true;
-
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	bool reset_frame = false;
 #endif

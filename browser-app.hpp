@@ -27,7 +27,7 @@
 
 typedef std::function<void(CefRefPtr<CefBrowser>)> BrowserFunc;
 
-#if defined(USE_UI_LOOP) && defined(WIN32)
+#if  defined(USE_UI_LOOP) && defined(WIN32)
 #include <QObject>
 #include <QTimer>
 #include <deque>

@@ -124,7 +124,7 @@ bool BrowserClient::OnProcessMessageReceived(
 
 	}
 	else if (name == "getStatus") {
-		json = Json::object{
+		json = Json::object {
 			{"recording", obs_frontend_recording_active()},
 			{"streaming", obs_frontend_streaming_active()},
 			{"recordingPaused", obs_frontend_recording_paused()},
@@ -459,7 +459,7 @@ void BrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame,
 		return;
 	}
 
-	if (frame->IsMain()&& bs->css.length()) {
+	if (frame->IsMain() && bs->css.length()) {
 		std::string uriEncodedCSS =
 			CefURIEncode(bs->css, false).ToString();
 

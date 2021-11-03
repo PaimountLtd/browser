@@ -74,9 +74,10 @@ bool hwaccel = false;
 
 /* ========================================================================= */
 
-#if defined(USE_UI_LOOP) && defined(WIN32)
+#if defined(USE_UI_LOOP) && defined (WIN32)
 extern MessageObject messageObject;
 #endif
+
 
 class BrowserTask : public CefTask {
 public:
@@ -123,7 +124,6 @@ static const char *default_browser_options = "";
 
 static void browser_source_get_defaults(obs_data_t *settings)
 {
-	// Custom css
 	obs_data_set_default_string(settings, "url",
 				    "https://obsproject.com/browser-source");
 	obs_data_set_default_int(settings, "width", 800);
@@ -184,7 +184,7 @@ static obs_properties_t *browser_source_get_properties(void *data)
 
 	obs_properties_set_flags(props, OBS_PROPERTIES_DEFER_UPDATE);
 	obs_property_t *prop = obs_properties_add_bool(props, "is_local_file", obs_module_text("LocalFile"));
-	obs_property_t *is_media_flag_prop = obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");	
+	obs_property_t *is_media_flag_prop = obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");
 	obs_property_set_visible(is_media_flag_prop, false);
 
 	if (bs && !bs->url.empty()) {
@@ -290,7 +290,7 @@ static obs_missing_files_t *browser_source_missingfiles(void *data)
 
 static CefRefPtr<BrowserApp> app;
 
-static void BrowserInit(obs_data_t *settings_obs)	
+static void BrowserInit(obs_data_t *settings_obs)
 {
 	blog(LOG_INFO, "BrowserInit - 0 Starting Browser Initialization");
 #if defined(__APPLE__) && defined(USE_UI_LOOP)
@@ -305,7 +305,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		CefMainArgs args;
 #else
 		/* On non-windows platforms, ie macOS, we'll want to pass thru flags to
-			* CEF */
+		* CEF */
 		struct obs_cmdline_args cmdline_args = obs_get_cmdline_args();
 		CefMainArgs args(cmdline_args.argc, cmdline_args.argv);
 #endif
@@ -344,12 +344,12 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-		// Override locale path from OBS binary path to plugin binary path
-		string locales = obs_get_module_binary_path(obs_current_module());
-		locales = locales.substr(0, locales.find_last_of('/') + 1);
-		locales += "locales";
-		BPtr<char> abs_locales = os_get_abs_path_ptr(locales.c_str());
-		CefString(&settings.locales_dir_path) = abs_locales;
+	// Override locale path from OBS binary path to plugin binary path
+	string locales = obs_get_module_binary_path(obs_current_module());
+	locales = locales.substr(0, locales.find_last_of('/') + 1);
+	locales += "locales";
+	BPtr<char> abs_locales = os_get_abs_path_ptr(locales.c_str());
+	CefString(&settings.locales_dir_path) = abs_locales;
 #endif
 
 #if defined(__APPLE__)
@@ -372,27 +372,27 @@ static void BrowserInit(obs_data_t *settings_obs)
 		accepted_languages = "en-US,en";
 	}
 
-		BPtr<char> conf_path = obs_module_config_path("");
-		os_mkdir(conf_path);
-		BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
-		CefString(&settings.locale) = obs_get_locale();
-		CefString(&settings.accept_language_list) = accepted_languages;
-		CefString(&settings.cache_path) = conf_path_abs;
+	BPtr<char> conf_path = obs_module_config_path("");
+	os_mkdir(conf_path);
+	BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
+	CefString(&settings.locale) = obs_get_locale();
+	CefString(&settings.accept_language_list) = accepted_languages;
+	CefString(&settings.cache_path) = conf_path_abs;
 #if !defined(__APPLE__) || defined(BROWSER_LEGACY)
-		char *abs_path = os_get_abs_path_ptr(path.c_str());
-		CefString(&settings.browser_subprocess_path) = abs_path;
-		bfree(abs_path);
+	char *abs_path = os_get_abs_path_ptr(path.c_str());
+	CefString(&settings.browser_subprocess_path) = abs_path;
+	bfree(abs_path);
 #endif
 
-		bool tex_sharing_avail = false;
+	bool tex_sharing_avail = false;
 
 	blog(LOG_INFO, "BrowserInit - 6 - Setting Languge of Browser");
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-		if (hwaccel) {
-			obs_enter_graphics();
-			hwaccel = tex_sharing_avail = gs_shared_texture_available();
-			obs_leave_graphics();
-		}
+	if (hwaccel) {
+		obs_enter_graphics();
+		hwaccel = tex_sharing_avail = gs_shared_texture_available();
+		obs_leave_graphics();
+	}
 #endif
 
 	blog(LOG_INFO, "BrowserInit - 7 - Creating BrowserApp with hardware acceleration to %s", hwaccel ? "true" : "false");
@@ -420,7 +420,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		
 		/* Register http://absolute/ scheme handler for older
 		* CEF builds which do not support file:// URLs */
-		CefRegisterSchemeHandlerFactory("http", "absolute", 
+		CefRegisterSchemeHandlerFactory("http", "absolute",
 						new BrowserSchemeHandlerFactory());
 #endif
 		blog(LOG_INFO, "BrowserInit - 12 - Signaling browser is ready to OBS");
@@ -431,7 +431,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 }
 
 #if defined(USE_UI_LOOP) && defined(__APPLE)
-extern BrowserCppInt *message;
+extern BrowserCppInt* message;
 #endif
 
 static void BrowserShutdown(void)
@@ -459,7 +459,7 @@ static void BrowserManagerThread(obs_data_t *settings)
 }
 #endif
 
-extern "C" EXPORT void obs_browser_initialize(obs_data_t *settings)
+extern "C" EXPORT void obs_browser_initialize(obs_data_t* settings)
 {
 	if (!os_atomic_set_bool(&manager_initialized, true)) {
 #ifdef USE_UI_LOOP
@@ -797,7 +797,7 @@ bool obs_module_load(void)
 
 #if defined(__APPLE__) && CHROME_VERSION_BUILD < 4183
 	// Make sure CEF malloc hijacking happens early in the process
-	if (isHighThanBigSur())
+	if(isHighThanBigSur())
 		obs_browser_initialize(nullptr);
 #endif
 

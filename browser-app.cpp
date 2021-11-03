@@ -21,8 +21,6 @@
 #include <json11/json11.hpp>
 #include <iostream>
 #include <mutex>
-#include <iostream>
-#include <fstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -113,11 +111,6 @@ void BrowserApp::OnBeforeChildProcessLaunch(
         }
     }
 
-	std::ofstream myfile;
-	myfile.open ("c:\\work\\temp\\browser_log.txt", std::ios::app | std::ios::out);
-	myfile << "OnBeforeChildProcessLaunch parameters count " << parameters.size() << std::endl;
-	myfile.close();	
-
 	for (auto&& p : parameters) {
 		if (p.first == "")
 			continue;
@@ -159,23 +152,17 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 
 	std::lock_guard<std::mutex> guard(flag_mutex);
 	if (this->media_flag != -1) {
-		if (this->media_flag) {
-			command_line->AppendSwitchWithValue("enable-media-stream", "1");
-		}
-		this->media_flag = -1;
+			if (this->media_flag) {
+					command_line->AppendSwitchWithValue("enable-media-stream", "1");
+			}
+			this->media_flag = -1;
 	} else if (this->media_flags.size()) {
-		bool flag = media_flags.front();
-		media_flags.pop();
-		if (flag) {
-			command_line->AppendSwitchWithValue(
-				"enable-media-stream", "1");
-		}
+			bool flag = media_flags.front();
+			media_flags.pop();
+			if (flag) {
+				command_line->AppendSwitchWithValue("enable-media-stream", "1");
+			}
 	}
-
-	std::ofstream myfile;
-	myfile.open ("c:\\work\\temp\\browser_log.txt", std::ios::app | std::ios::out);
-	myfile << "OnBeforeCommandLineProcessing parameters count " << parameters.size() << std::endl;
-	myfile.close();	
 
 	for (auto&& p : parameters) {
 		if (p.first == "")

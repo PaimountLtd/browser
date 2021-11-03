@@ -27,14 +27,14 @@ typedef std::function<void()> MessageTask;
 typedef std::function<void(CefRefPtr<CefBrowser>)> BrowserFunc;
 
 struct Task {
-	CefRefPtr<CefBrowser> browser;
-	BrowserFunc func;
+    CefRefPtr<CefBrowser> browser;
+    BrowserFunc func;
 
-	inline Task() {}
-	inline Task(CefRefPtr<CefBrowser> browser_, BrowserFunc func_)
-		: browser(browser_), func(func_)
-	{
-	}
+    inline Task() {}
+    inline Task(CefRefPtr<CefBrowser> browser_, BrowserFunc func_)
+        : browser(browser_), func(func_)
+    {
+    }
 };
 
 extern std::mutex browserTaskMutex;
