@@ -179,8 +179,12 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 #else
 		bool hwaccel = false;
 #endif
-	CefRefPtr<BrowserClient> browserClient = new BrowserClient(this, hwaccel && tex_sharing_avail, reroute_audio);
-	CefWindowInfo windowInfo;
+
+		CefRefPtr<BrowserClient> browserClient =
+			new BrowserClient(this, hwaccel && tex_sharing_avail,
+					  reroute_audio, webpage_control_level);
+
+		CefWindowInfo windowInfo;
 #if CHROME_VERSION_BUILD < 3071
 		windowInfo.transparent_painting_enabled = true;
 #endif
@@ -391,7 +395,7 @@ void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 			CefKeyEvent e;
 			e.windows_key_code = native_vkey;
 #ifdef __APPLE__
-			e.native_key_code = native_scancode;
+			e.native_key_code = native_vkey;
 #endif
 
 			e.type = key_up ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
@@ -509,6 +513,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		bool n_shutdown;
 		bool n_restart;
 		bool n_reroute;
+		ControlLevel n_webpage_control_level;
 		std::string n_url;
 		std::string n_css;
 		std::string n_browser_options;
@@ -526,6 +531,8 @@ void BrowserSource::Update(obs_data_t *settings)
 		n_url = obs_data_get_string(settings,
 					    n_is_local ? "local_file" : "url");
 		n_reroute = obs_data_get_bool(settings, "reroute_audio");
+		n_webpage_control_level = static_cast<ControlLevel>(
+			obs_data_get_int(settings, "webpage_control_level"));
 
 		if (n_is_local && !n_url.empty()) {
 			n_url = CefURIEncode(n_url, false);
@@ -571,7 +578,8 @@ void BrowserSource::Update(obs_data_t *settings)
 		    n_height == height && n_fps_custom == fps_custom &&
 		    n_fps == fps && n_shutdown == shutdown_on_invisible &&
 		    n_restart == restart && n_css == css && n_browser_options == browser_options && n_url == url &&
-		    n_reroute == reroute_audio && n_is_media_flag == is_media_flag) {
+		    n_reroute == reroute_audio && (n_is_media_flag == is_media_flag ||
+		    n_webpage_control_level == webpage_control_level)) {
 			return;
 		}
 
@@ -583,6 +591,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		fps_custom = n_fps_custom;
 		shutdown_on_invisible = n_shutdown;
 		reroute_audio = n_reroute;
+		webpage_control_level = n_webpage_control_level;
 		restart = n_restart;
 		css = n_css;
 		browser_options = n_browser_options;
@@ -635,16 +644,44 @@ void BrowserSource::Render()
 			obs_get_base_effect((hwaccel) ? OBS_EFFECT_DEFAULT_RECT
 						      : OBS_EFFECT_DEFAULT);
 #else
-		gs_effect_t *effect =
-			obs_get_base_effect(OBS_EFFECT_PREMULTIPLIED_ALPHA);
+		gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
 #endif
 
-		const bool current = 
-			gs_is_srgb_format(gs_texture_get_color_format(texture));
-		const bool previous = gs_set_linear_srgb(current);
-		while (gs_effect_loop(effect, "Draw"))
-			obs_source_draw(texture, 0, 0, 0, 0, flip);
-		gs_set_linear_srgb(previous);
+		bool linear_sample = extra_texture == NULL;
+		gs_texture_t *draw_texture = texture;
+		if (!linear_sample &&
+		    !obs_source_get_texcoords_centered(source)) {
+			gs_copy_texture(extra_texture, texture);
+			draw_texture = extra_texture;
+
+			linear_sample = true;
+		}
+
+		const bool previous = gs_framebuffer_srgb_enabled();
+		gs_enable_framebuffer_srgb(true);
+
+		gs_blend_state_push();
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+
+		gs_eparam_t *const image =
+			gs_effect_get_param_by_name(effect, "image");
+
+		const char *tech;
+		if (linear_sample) {
+			gs_effect_set_texture_srgb(image, draw_texture);
+			tech = "Draw";
+		} else {
+			gs_effect_set_texture(image, draw_texture);
+			tech = "DrawSrgbDecompress";
+		}
+
+		const uint32_t flip_flag = flip ? GS_FLIP_V : 0;
+		while (gs_effect_loop(effect, tech))
+			gs_draw_sprite(draw_texture, flip_flag, 0, 0);
+
+		gs_blend_state_pop();
+
+		gs_enable_framebuffer_srgb(previous);
 	}
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
