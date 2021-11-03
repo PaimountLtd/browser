@@ -216,7 +216,7 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 #if ENABLE_LOCAL_FILE_URL_SCHEME
 		if (is_local) {
 			/* Disable web security for file:// URLs to allow
-			* local content access to remote APIs */
+			 * local content access to remote APIs */
 			cefBrowserSettings.web_security = STATE_DISABLED;
 		}
 #endif
@@ -391,7 +391,7 @@ void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 			CefKeyEvent e;
 			e.windows_key_code = native_vkey;
 #ifdef __APPLE__
-			e.native_key_code = native_vkey;
+			e.native_key_code = native_scancode;
 #endif
 
 			e.type = key_up ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
@@ -560,9 +560,8 @@ void BrowserSource::Update(obs_data_t *settings)
 		}
 
 #if ENABLE_LOCAL_FILE_URL_SCHEME
-			if (astrcmpi_n(n_url.c_str(), "http://absolute/", 16) ==
-			    0) {
-				/* Replace http://absolute/ URLs with file://
+		if (astrcmpi_n(n_url.c_str(), "http://absolute/", 16) == 0) {
+			/* Replace http://absolute/ URLs with file://
 			 * URLs if file:// URLs are enabled */
 			n_url = "file:///" + n_url.substr(16);
 			n_is_local = true;
@@ -632,16 +631,16 @@ void BrowserSource::Render()
 
 	if (texture) {
 #ifdef __APPLE__
-		gs_effect_t *effect = obs_get_base_effect(
-			(hwaccel) ? OBS_EFFECT_DEFAULT_RECT
-					: OBS_EFFECT_PREMULTIPLIED_ALPHA);
+		gs_effect_t *effect =
+			obs_get_base_effect((hwaccel) ? OBS_EFFECT_DEFAULT_RECT
+						      : OBS_EFFECT_DEFAULT);
 #else
 		gs_effect_t *effect =
 			obs_get_base_effect(OBS_EFFECT_PREMULTIPLIED_ALPHA);
 #endif
 
-		const bool current = gs_is_srgb_format(
-			gs_texture_get_color_format(texture));
+		const bool current = 
+			gs_is_srgb_format(gs_texture_get_color_format(texture));
 		const bool previous = gs_set_linear_srgb(current);
 		while (gs_effect_loop(effect, "Draw"))
 			obs_source_draw(texture, 0, 0, 0, 0, flip);
@@ -662,8 +661,7 @@ static void ExecuteOnBrowser(BrowserFunc func, BrowserSource *bs)
 	lock_guard<mutex> lock(browser_list_mutex);
 
 	if (bs) {
-		BrowserSource *bsw =
-			reinterpret_cast<BrowserSource *>(bs);
+		BrowserSource *bsw = reinterpret_cast<BrowserSource *>(bs);
 		bsw->ExecuteOnBrowser(func, true);
 	}
 }
@@ -674,8 +672,7 @@ static void ExecuteOnAllBrowsers(BrowserFunc func)
 
 	BrowserSource *bs = first_browser;
 	while (bs) {
-		BrowserSource *bsw =
-			reinterpret_cast<BrowserSource *>(bs);
+		BrowserSource *bsw = reinterpret_cast<BrowserSource *>(bs);
 		bsw->ExecuteOnBrowser(func, true);
 		bs = bs->next;
 	}
@@ -691,8 +688,7 @@ void DispatchJSEvent(std::string eventName, std::string jsonString,
 
 		args->SetString(0, eventName);
 		args->SetString(1, jsonString);
-		SendBrowserProcessMessage(cefBrowser, PID_RENDERER,
-						msg);
+		SendBrowserProcessMessage(cefBrowser, PID_RENDERER,msg);
 	};
 
 	if (!browser)
