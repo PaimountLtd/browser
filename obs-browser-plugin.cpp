@@ -158,8 +158,8 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 
 	return true;
 }
-static bool on_browser_media_flag_modified(obs_properties_t* props, obs_property_t* property,
-	obs_data_t* settings)
+
+static bool on_browser_media_flag_modified(obs_properties_t* props, obs_property_t* property, obs_data_t* settings)
 {
 	// TODO: This is a command line option and will have to change the command line properties.
 	obs_properties_t *new_flags = props;
@@ -183,10 +183,8 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	DStr path;
 
 	obs_properties_set_flags(props, OBS_PROPERTIES_DEFER_UPDATE);
-	obs_property_t *prop = obs_properties_add_bool(
-		props, "is_local_file", obs_module_text("LocalFile"));
-	obs_property_t *is_media_flag_prop =
-		obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");	
+	obs_property_t *prop = obs_properties_add_bool(props, "is_local_file", obs_module_text("LocalFile"));
+	obs_property_t *is_media_flag_prop = obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");	
 	obs_property_set_visible(is_media_flag_prop, false);
 
 	if (bs && !bs->url.empty()) {
@@ -208,10 +206,8 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_properties_add_text(props, "url", obs_module_text("URL"),
 				OBS_TEXT_DEFAULT);
 
-	obs_properties_add_int(props, "width", obs_module_text("Width"), 1,
-			       4096, 1);
-	obs_properties_add_int(props, "height", obs_module_text("Height"), 1,
-			       4096, 1);
+	obs_properties_add_int(props, "width", obs_module_text("Width"), 1, 4096, 1);
+	obs_properties_add_int(props, "height", obs_module_text("Height"), 1, 4096, 1);
 
 	obs_property_t *fps_set = obs_properties_add_bool(
 		props, "fps_custom", obs_module_text("CustomFrameRate"));
@@ -349,8 +345,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 		// Override locale path from OBS binary path to plugin binary path
-		string locales =
-			obs_get_module_binary_path(obs_current_module());
+		string locales = obs_get_module_binary_path(obs_current_module());
 		locales = locales.substr(0, locales.find_last_of('/') + 1);
 		locales += "locales";
 		BPtr<char> abs_locales = os_get_abs_path_ptr(locales.c_str());
@@ -425,8 +420,8 @@ static void BrowserInit(obs_data_t *settings_obs)
 		
 		/* Register http://absolute/ scheme handler for older
 		* CEF builds which do not support file:// URLs */
-		CefRegisterSchemeHandlerFactory(
-			"http", "absolute", new BrowserSchemeHandlerFactory());
+		CefRegisterSchemeHandlerFactory("http", "absolute", 
+						new BrowserSchemeHandlerFactory());
 #endif
 		blog(LOG_INFO, "BrowserInit - 12 - Signaling browser is ready to OBS");
 		os_event_signal(cef_started_event);
@@ -468,8 +463,7 @@ extern "C" EXPORT void obs_browser_initialize(obs_data_t *settings)
 {
 	if (!os_atomic_set_bool(&manager_initialized, true)) {
 #ifdef USE_UI_LOOP
-		blog(LOG_INFO,
-		     "obs_browser_initialize, using UI_LOOP, call BrowserInit");
+		blog(LOG_INFO, "obs_browser_initialize, using UI_LOOP, call BrowserInit");
 		BrowserInit(settings);
 		blog(LOG_INFO, "obs_browser_initialize - end");
 #else
@@ -522,8 +516,7 @@ void RegisterBrowserSource()
 	info.update = [](void *data, obs_data_t *settings) {
 		BrowserSource *bs = static_cast<BrowserSource *>(data);
 		if (app) {
-			bool enabled =
-				obs_data_get_bool(settings, "is_media_flag");
+			bool enabled = obs_data_get_bool(settings, "is_media_flag");
 			app->media_flag = enabled ? 1 : 0;
 		}
 		bs->Update(settings);

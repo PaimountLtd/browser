@@ -122,7 +122,8 @@ bool BrowserClient::OnProcessMessageReceived(
 			{"width", (int)obs_source_get_width(current_scene)},
 			{"height", (int)obs_source_get_height(current_scene)}};
 
-	} else if (name == "getStatus") {
+	}
+	else if (name == "getStatus") {
 		json = Json::object{
 			{"recording", obs_frontend_recording_active()},
 			{"streaming", obs_frontend_streaming_active()},

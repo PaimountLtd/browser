@@ -173,17 +173,13 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 #if SHARED_TEXTURE_SUPPORT_ENABLED
 				if (hwaccel) {
 					obs_enter_graphics();
-					tex_sharing_avail =
-						gs_shared_texture_available();
+					tex_sharing_avail = gs_shared_texture_available();
 					obs_leave_graphics();
 				}
 #else
 				bool hwaccel = false;
 #endif
-				CefRefPtr<BrowserClient> browserClient =
-					new BrowserClient(this,
-						hwaccel && tex_sharing_avail,
-						reroute_audio);
+	CefRefPtr<BrowserClient> browserClient = new BrowserClient(this, hwaccel && tex_sharing_avail, reroute_audio);
 				CefWindowInfo windowInfo;
 #if CHROME_VERSION_BUILD < 3071
 				windowInfo.transparent_painting_enabled = true;
@@ -202,8 +198,7 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 				if (!fps_custom) {
 					windowInfo.external_begin_frame_enabled = true;
 					cefBrowserSettings.windowless_frame_rate = 0;
-				}
-				else {
+				} else {
 					cefBrowserSettings.windowless_frame_rate = fps;
 				}
 #else
@@ -222,8 +217,7 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 				if (is_local) {
 					/* Disable web security for file:// URLs to allow
 				 * local content access to remote APIs */
-					cefBrowserSettings.web_security =
-						STATE_DISABLED;
+			cefBrowserSettings.web_security = STATE_DISABLED;
 				}
 #endif
 				cefBrowser = CefBrowserHost::CreateBrowserSync(
@@ -345,8 +339,8 @@ void BrowserSource::SendMouseMove(const struct obs_mouse_event *event,
 				e.modifiers = modifiers;
 				e.x = x;
 				e.y = y;
-				cefBrowser->GetHost()->SendMouseMoveEvent(
-					e, mouse_leave);
+			cefBrowser->GetHost()->SendMouseMoveEvent(e,
+								  mouse_leave);
 			},
 			true);
 }
@@ -364,8 +358,8 @@ void BrowserSource::SendMouseWheel(const struct obs_mouse_event *event,
 				e.modifiers = modifiers;
 				e.x = x;
 				e.y = y;
-				cefBrowser->GetHost()->SendMouseWheelEvent(
-					e, x_delta, y_delta);
+			cefBrowser->GetHost()->SendMouseWheelEvent(e, x_delta,
+								   y_delta);
 			},
 			true);
 }
@@ -403,8 +397,7 @@ void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 				e.native_key_code = native_scancode;
 #endif
 
-				e.type = key_up ? KEYEVENT_KEYUP
-						: KEYEVENT_RAWKEYDOWN;
+			e.type = key_up ? KEYEVENT_KEYUP : KEYEVENT_RAWKEYDOWN;
 
 				if (!text.empty()) {
 					wstring wide = to_wide(text);
@@ -420,8 +413,7 @@ void BrowserSource::SendKeyClick(const struct obs_key_event *event, bool key_up)
 					e.type = KEYEVENT_CHAR;
 #ifdef __linux__
 					e.windows_key_code =
-						KeyboardCodeFromXKeysym(
-							e.character);
+					KeyboardCodeFromXKeysym(e.character);
 #elif defined(_WIN32)
 				e.windows_key_code = e.character;
 #else
@@ -447,18 +439,16 @@ void BrowserSource::SetShowing(bool showing)
 			ExecuteOnBrowser(
 				[=](CefRefPtr<CefBrowser> cefBrowser) {
 					CefRefPtr<CefProcessMessage> msg =
-						CefProcessMessage::Create(
-							"Visibility");
+					CefProcessMessage::Create("Visibility");
 					CefRefPtr<CefListValue> args =
 						msg->GetArgumentList();
 					args->SetBool(0, showing);
-					SendBrowserProcessMessage(
-						cefBrowser, PID_RENDERER, msg);
+				SendBrowserProcessMessage(cefBrowser,
+							  PID_RENDERER, msg);
 				},
 				true);
 			Json json = Json::object{{"visible", showing}};
-			DispatchJSEvent("obsSourceVisibleChanged", json.dump(),
-					this);
+		DispatchJSEvent("obsSourceVisibleChanged", json.dump(), this);
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 			if (showing && !fps_custom) {
 				reset_frame = false;

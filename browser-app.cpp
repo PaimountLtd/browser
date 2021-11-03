@@ -160,8 +160,7 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 	std::lock_guard<std::mutex> guard(flag_mutex);
 	if (this->media_flag != -1) {
 		if (this->media_flag) {
-			command_line->AppendSwitchWithValue(
-				"enable-media-stream", "1");
+			command_line->AppendSwitchWithValue("enable-media-stream", "1");
 		}
 		this->media_flag = -1;
 	} else if (this->media_flags.size()) {
@@ -173,15 +172,6 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 		}
 	}
 
-	for (auto p : parameters) {
-		if (p.first == "")
-			continue;
-		if (p.second == "") {
-			command_line->AppendSwitchWithValue(p.first, p.second);
-		}
-		else
-			command_line->AppendSwitch(p.first);
-	}
 	std::ofstream myfile;
 	myfile.open ("c:\\work\\temp\\browser_log.txt", std::ios::app | std::ios::out);
 	myfile << "OnBeforeCommandLineProcessing parameters count " << parameters.size() << std::endl;

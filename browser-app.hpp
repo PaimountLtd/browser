@@ -136,8 +136,6 @@ public:
 #endif
 #endif
 
-	//void RestartBrowser();
-
 #if !ENABLE_WASHIDDEN
 	std::unordered_map<int, bool> browserVis;
 
