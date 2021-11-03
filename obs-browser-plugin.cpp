@@ -188,9 +188,6 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *is_media_flag_prop =
 		obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");	
 	obs_property_set_visible(is_media_flag_prop, false);
-	obs_property_t *browser_options_prop =
-		obs_properties_add_text(props, "browser_options",
-			obs_module_text("browser_options"), OBS_TEXT_DEFAULT);
 
 	if (bs && !bs->url.empty()) {
 		const char *slash;
@@ -203,9 +200,8 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	}
 
 	obs_property_set_modified_callback(prop, is_local_file_modified);
-	obs_property_set_modified_callback(is_media_flag_prop,
-		on_browser_media_flag_modified);
-	
+	obs_property_set_modified_callback(is_media_flag_prop, on_browser_media_flag_modified);
+
 	obs_properties_add_path(props, "local_file",
 				obs_module_text("LocalFile"), OBS_PATH_FILE,
 				"*.*", path->array);
@@ -232,9 +228,11 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *p = obs_properties_add_text(
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
-	obs_property_t* browser_options_property = obs_properties_add_text(
-		props, "browser_options", obs_module_text("browser_options"), OBS_TEXT_MULTILINE);
-	obs_property_text_set_monospace(browser_options_property, true);
+
+	obs_property_t *browser_options_prop =
+		obs_properties_add_text(props, "browser_options",
+			obs_module_text("browser_options"), OBS_TEXT_DEFAULT);
+
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
 	obs_properties_add_bool(props, "restart_when_active",
@@ -317,38 +315,36 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 		blog(LOG_INFO, "BrowserInit - 2 - (Mac Only), pass through command line parameters from OBS onto Browser");
 
-		CefSettings settings;
-		settings.log_severity = LOGSEVERITY_VERBOSE;
-		settings.windowless_rendering_enabled = true;
-		settings.no_sandbox = true;
+	CefSettings settings;
+	settings.log_severity = LOGSEVERITY_VERBOSE;
+	settings.windowless_rendering_enabled = true;
+	settings.no_sandbox = true;
 
-		uint32_t obs_ver = obs_get_version();
-		uint32_t obs_maj = obs_ver >> 24;
-		uint32_t obs_min = (obs_ver >> 16) & 0xFF;
-		uint32_t obs_pat = obs_ver & 0xFFFF;
+	uint32_t obs_ver = obs_get_version();
+	uint32_t obs_maj = obs_ver >> 24;
+	uint32_t obs_min = (obs_ver >> 16) & 0xFF;
+	uint32_t obs_pat = obs_ver & 0xFFFF;
 
-		blog(LOG_INFO, "BrowserInit - 3 - Setting browser setttings (no window, no sandboxing)");
+	blog(LOG_INFO, "BrowserInit - 3 - Setting browser setttings (no window, no sandboxing)");
+	/* This allows servers the ability to determine that browser panels and
+	 * browser sources are coming from OBS. */
+	std::stringstream prod_ver;
+	prod_ver << "Chrome/";
+	prod_ver << std::to_string(CHROME_VERSION_MAJOR) << "."
+		 << std::to_string(CHROME_VERSION_MINOR) << "."
+		 << std::to_string(CHROME_VERSION_BUILD) << "."
+		 << std::to_string(CHROME_VERSION_PATCH);
+	prod_ver << " OBS/";
+	prod_ver << std::to_string(obs_maj) << "." << std::to_string(obs_min)
+		 << "." << std::to_string(obs_pat);
 
-		/* This allows servers the ability to determine that browser panels and
-		 * browser sources are coming from OBS. */
-		std::stringstream prod_ver;
-		prod_ver << "Chrome/";
-		prod_ver << std::to_string(CHROME_VERSION_MAJOR) << "."
-			 << std::to_string(CHROME_VERSION_MINOR) << "."
-			 << std::to_string(CHROME_VERSION_BUILD) << "."
-			 << std::to_string(CHROME_VERSION_PATCH);
-		prod_ver << " OBS/";
-		prod_ver << std::to_string(obs_maj) << "."
-			 << std::to_string(obs_min) << "."
-			 << std::to_string(obs_pat);
+	CefString(&settings.product_version) = prod_ver.str();
 
-		CefString(&settings.product_version) = prod_ver.str();
-
-		blog(LOG_INFO, "BrowserInit - 4 - Telling browser about OBS version number");
+	blog(LOG_INFO, "BrowserInit - 4 - Telling browser about OBS version number");
 #ifdef USE_UI_LOOP
-		blog(LOG_WARN, "BrowserInit - Using external UI message pump. Note, this avoids race conditions at the cost of performance.");
-		settings.external_message_pump = true;
-		settings.multi_threaded_message_loop = false;
+	blog(LOG_WARN, "BrowserInit - Using external UI message pump. Note, this avoids race conditions at the cost of performance.");
+	settings.external_message_pump = true;
+	settings.multi_threaded_message_loop = false;
 #endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -362,25 +358,24 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 
 #if defined(__APPLE__)
-		blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
+	blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
 
-		std::string binPath = getExecutablePath();
-		binPath = binPath.substr(0, binPath.find_last_of('/'));
-		binPath +=
-			"/Frameworks/Chromium\ Embedded\ Framework.framework";
-		CefString(&settings.framework_dir_path) = binPath;
-		blog(LOG_INFO, "binPath: %s", binPath.c_str());
+	std::string binPath = getExecutablePath();
+	binPath = binPath.substr(0, binPath.find_last_of('/'));
+	binPath += "/Frameworks/Chromium\ Embedded\ Framework.framework";
+	CefString(&settings.framework_dir_path) = binPath;
+	blog(LOG_INFO, "binPath: %s", binPath.c_str());
 #endif
-		blog(LOG_INFO, "BrowserInit - 5 - Informing browser about it's framework language modules (OS specific)");
-		std::string obs_locale = obs_get_locale();
-		std::string accepted_languages;
-		if (obs_locale != "en-US") {
-			accepted_languages = obs_locale;
-			accepted_languages += ",";
-			accepted_languages += "en-US,en";
-		} else {
-			accepted_languages = "en-US,en";
-		}
+	blog(LOG_INFO, "BrowserInit - 5 - Informing browser about it's framework language modules (OS specific)");
+	std::string obs_locale = obs_get_locale();
+	std::string accepted_languages;
+	if (obs_locale != "en-US") {
+		accepted_languages = obs_locale;
+		accepted_languages += ",";
+		accepted_languages += "en-US,en";
+	} else {
+		accepted_languages = "en-US,en";
+	}
 
 		BPtr<char> conf_path = obs_module_config_path("");
 		os_mkdir(conf_path);
@@ -396,7 +391,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 
 		bool tex_sharing_avail = false;
 
-		blog(LOG_INFO, "BrowserInit - 6 - Setting Languge of Browser");
+	blog(LOG_INFO, "BrowserInit - 6 - Setting Languge of Browser");
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 		if (hwaccel) {
 			obs_enter_graphics();
@@ -404,30 +399,28 @@ static void BrowserInit(obs_data_t *settings_obs)
 			obs_leave_graphics();
 		}
 #endif
-		blog(LOG_INFO, "BrowserInit - 7 - Creating BrowserApp with hardware acceleration to %s", hwaccel ? "true" : "false");
- 		app = new BrowserApp(args, hwaccel);
+
+	blog(LOG_INFO, "BrowserInit - 7 - Creating BrowserApp with hardware acceleration to %s", hwaccel ? "true" : "false");
+	app = new BrowserApp(args, hwaccel);
 
 #ifdef _WIN32
-
-		blog(LOG_INFO, "BrowserInit - 8 - Setting hardware acceleration to %s", hwaccel ? "true" : "false");
-		CefExecuteProcess(args, app, nullptr);
-		/* Massive (but amazing) hack to prevent chromium from modifying our
-		 * process tokens and permissions, which caused us problems with winrt,
-		 * used with window capture.  Note, the structure internally is just
-		 * two pointers normally.  If it causes problems with future versions
-		 * we'll just switch back to the static library but I doubt we'll need
-		 * to. */
-
-		blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with sandbox hack (winrt workargound)");
-		uintptr_t zeroed_memory_lol[32] = {};
-		CefInitialize(args, settings, app, zeroed_memory_lol);
+	blog(LOG_INFO, "BrowserInit - 8 - Setting hardware acceleration to %s", hwaccel ? "true" : "false");
+	CefExecuteProcess(args, app, nullptr);
+	/* Massive (but amazing) hack to prevent chromium from modifying our
+	 * process tokens and permissions, which caused us problems with winrt,
+	 * used with window capture.  Note, the structure internally is just
+	 * two pointers normally.  If it causes problems with future versions
+	 * we'll just switch back to the static library but I doubt we'll need
+	 * to. */
+	blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with sandbox hack (winrt workargound)");
+	uintptr_t zeroed_memory_lol[32] = {};
+	CefInitialize(args, settings, app, zeroed_memory_lol);
 #else
-		blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with no sandbox information");
-		CefInitialize(args, settings, app, nullptr);
-		blog(LOG_INFO, "BrowserInit - 10 - Initilization complete");
+	blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with no sandbox information");
+	CefInitialize(args, settings, app, nullptr);
+	blog(LOG_INFO, "BrowserInit - 10 - Initilization complete");
 #endif
-		blog(LOG_INFO, "BrowserInit - 11 - Setting custom URL handler to %s (local file workaround for some versions)",
-			ENABLE_LOCAL_FILE_URL_SCHEME ? "true" : "false");
+	blog(LOG_INFO, "BrowserInit - 11 - Setting custom URL handler to %s (local file workaround for some versions)", ENABLE_LOCAL_FILE_URL_SCHEME ? "true" : "false");
 #if !ENABLE_LOCAL_FILE_URL_SCHEME
 		
 		/* Register http://absolute/ scheme handler for older
@@ -507,24 +500,20 @@ void RegisterBrowserSource()
 	info.get_name = [](void *) { return obs_module_text("BrowserSource"); };
 	blog(LOG_INFO, "RegisterBrowserSource");
 	info.create = [](obs_data_t *settings, obs_source_t *source) -> void * {
-		blog(LOG_INFO,
-		     "Browser Source, INIT via info.create , settings %p source %p",
-		     settings, source);
+	blog(LOG_INFO, "Browser Source, INIT via info.create , settings %p source %p", settings, source);
 
-		obs_browser_initialize(settings);
-		if (manager_initialized && app) {
-			bool enabled =
-				obs_data_get_bool(settings, "is_media_flag");
-			app->AddFlag(enabled);
-		}
+        obs_browser_initialize(settings);
+        if (manager_initialized && app) {
+            bool enabled = obs_data_get_bool(settings, "is_media_flag");
+            app->AddFlag(enabled);
+        }
 
-		obs_source_set_audio_mixers(source, 0xFF);
-		obs_source_set_monitoring_type(
-			source, OBS_MONITORING_TYPE_MONITOR_ONLY);
-		BrowserSource *bs = new BrowserSource(settings, source);
-		blog(LOG_INFO, "Browserapp pointer: %p", app.get());
-
-		return bs;
+        obs_source_set_audio_mixers(source, 0xFF);
+        obs_source_set_monitoring_type(source, OBS_MONITORING_TYPE_MONITOR_ONLY);
+        BrowserSource *bs = new BrowserSource(settings, source);
+        blog(LOG_INFO, "Browserapp pointer: %p", app.get());
+        
+        return bs;
 	};
 	info.destroy = [](void *data) {
 		delete static_cast<BrowserSource *>(data);

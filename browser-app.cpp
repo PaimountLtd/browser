@@ -21,6 +21,8 @@
 #include <json11/json11.hpp>
 #include <iostream>
 #include <mutex>
+#include <iostream>
+#include <fstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -45,8 +47,7 @@
 
 using namespace json11;
 
-// we can only have a single instance of the browser, so parameters are shared between them. 
-static std::map<std::string, std::string> parameters;
+std::map<std::string, std::string> BrowserApp::parameters;
 
 CefRefPtr<CefRenderProcessHandler> BrowserApp::GetRenderProcessHandler()
 {
@@ -112,17 +113,21 @@ void BrowserApp::OnBeforeChildProcessLaunch(
         }
     }
 
-    for (auto p : parameters) {
-	    if (p.first == "")
-		    continue;
-	    if (p.second == "") {
-		    command_line->AppendSwitchWithValue(p.first, p.second);
-	    }
-	    else
-		    command_line->AppendSwitch(p.first);
-    }
+	std::ofstream myfile;
+	myfile.open ("c:\\work\\temp\\browser_log.txt", std::ios::app | std::ios::out);
+	myfile << "OnBeforeChildProcessLaunch parameters count " << parameters.size() << std::endl;
+	myfile.close();	
 
-    //CefBrowserProcessHandler::OnBeforeChildProcessLaunch(command_line);
+	for (auto&& p : parameters) {
+		if (p.first == "")
+			continue;
+		if (p.second == "")
+			command_line->AppendSwitch(p.first);
+		else
+			command_line->AppendSwitchWithValue(p.first, p.second);
+	}
+
+	//CefBrowserProcessHandler::OnBeforeChildProcessLaunch(command_line);
 }
 
 void BrowserApp::OnBeforeCommandLineProcessing(
@@ -176,6 +181,20 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 		}
 		else
 			command_line->AppendSwitch(p.first);
+	}
+	std::ofstream myfile;
+	myfile.open ("c:\\work\\temp\\browser_log.txt", std::ios::app | std::ios::out);
+	myfile << "OnBeforeCommandLineProcessing parameters count " << parameters.size() << std::endl;
+	myfile.close();	
+
+	for (auto&& p : parameters) {
+		if (p.first == "")
+			continue;
+		if (p.second == "")
+			command_line->AppendSwitch(p.first);
+		else
+			command_line->AppendSwitchWithValue(p.first, p.second);
+
 	}
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");

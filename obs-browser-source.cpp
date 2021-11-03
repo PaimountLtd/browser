@@ -53,9 +53,7 @@ static mutex browser_restarting;
 static BrowserSource *first_browser = nullptr;
 
 // This is to prevent the browsers from starting while shutting down and other potentially bad things.
-
 std::map<std::string, std::string> GetNewBrowserOptions(std::string options);
-
 
 static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
 {
@@ -153,25 +151,6 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 	}
 }
 
-void BrowserSource::RestartBrowser()
-{
-	blog(LOG_INFO, "Browser is restarting");
-
-	const std::lock_guard<std::mutex> restartGuard(browser_restarting);
-	{
-		// Mutext here to protect if we're in a bad state already
-		const std::lock_guard<std::mutex> lock(browser_list_mutex);
-		if (cefBrowser == nullptr)
-			return;
-	}
-
-	obs_data_t* settings = obs_source_get_settings(this->source);
-
-	DestroyBrowser();
-	CreateBrowser(settings);
-
-}
-
 bool BrowserSource::CreateBrowser(obs_data_t* settings)
 {
 	// Lock_guard takes care of try catch exceptions and other potentional deadlock conditions.
@@ -216,7 +195,7 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 				windowInfo.shared_texture_enabled = hwaccel;
 #endif
-				CefBrowserSettings cefBrowserSettings;
+		CefBrowserSettings cefBrowserSettings;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
@@ -253,14 +232,13 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 #if CHROME_VERSION_BUILD >= 3770
 					CefRefPtr<CefDictionaryValue>(),
 #endif
-					nullptr);
+		nullptr);
 
-				if (cefBrowser) {
-					blog(LOG_INFO, "CreateBrowserSync - success");
-				}
-				else {
-					blog(LOG_INFO, "CreateBrowserSync - fail");
-				}
+		if (cefBrowser) {
+			blog(LOG_INFO, "CreateBrowserSync - success");
+		} else {
+			blog(LOG_INFO, "CreateBrowserSync - fail");
+		}
 #if CHROME_VERSION_BUILD >= 3683
 				if (reroute_audio)
 					cefBrowser->GetHost()->SetAudioMuted(true);
@@ -274,22 +252,39 @@ bool BrowserSource::CreateBrowser(obs_data_t* settings)
 
 }
 
+void BrowserSource::RestartBrowser()
+{
+	blog(LOG_INFO, "Browser is restarting");
+
+	const std::lock_guard<std::mutex> restartGuard(browser_restarting);
+	{
+		// Mutext here to protect if we're in a bad state already
+		const std::lock_guard<std::mutex> lock(browser_list_mutex);
+		if (cefBrowser == nullptr)
+			return;
+	}
+
+	obs_data_t* settings = obs_source_get_settings(this->source);
+
+	DestroyBrowser();
+	CreateBrowser(settings);
+}
+
 void BrowserSource::DestroyBrowser(bool async)
 {
-		ExecuteOnBrowser(
-			[](CefRefPtr<CefBrowser> cefBrowser) {
-				const std::lock_guard<std::mutex> lock(browser_list_mutex);
+	ExecuteOnBrowser(
+		[](CefRefPtr<CefBrowser> cefBrowser) {
+			const std::lock_guard<std::mutex> lock(browser_list_mutex);
 
-				CefRefPtr<CefClient> client =
-					cefBrowser->GetHost()->GetClient();
-				BrowserClient *bc =
-					reinterpret_cast<BrowserClient *>(
-						client.get());
-				if (bc) {
-					bc->bs = nullptr;
-				}
+			CefRefPtr<CefClient> client =
+				cefBrowser->GetHost()->GetClient();
+			BrowserClient *bc =
+				reinterpret_cast<BrowserClient *>(client.get());
+			if (bc) {
+				bc->bs = nullptr;
+			}
 
-				/*
+			/*
 		 * This stops rendering
 		 * http://magpcss.org/ceforum/viewtopic.php?f=6&t=12079
 		 * https://bitbucket.org/chromiumembedded/cef/issues/1363/washidden-api-got-broken-on-branch-2062)
@@ -519,42 +514,36 @@ inline void BrowserSource::SignalBeginFrame()
 
 void BrowserSource::Update(obs_data_t *settings)
 {
-		if (settings) {
-			bool n_is_local;
-			bool n_is_media_flag;
-			int n_width;
-			int n_height;
-			bool n_fps_custom;
-			int n_fps;
-			bool n_shutdown;
-			bool n_restart;
-			bool n_reroute;
-			std::string n_url;
-			std::string n_css;
-			std::string n_browser_options;
+	if (settings) {
+		bool n_is_local;
+		bool n_is_media_flag;
+		int n_width;
+		int n_height;
+		bool n_fps_custom;
+		int n_fps;
+		bool n_shutdown;
+		bool n_restart;
+		bool n_reroute;
+		std::string n_url;
+		std::string n_css;
+		std::string n_browser_options;
 
-			n_is_media_flag =
-				obs_data_get_bool(settings, "is_media_flag");
-			n_is_local =
-				obs_data_get_bool(settings, "is_local_file");
-			n_width = (int)obs_data_get_int(settings, "width");
-			n_height = (int)obs_data_get_int(settings, "height");
-			n_fps_custom =
-				obs_data_get_bool(settings, "fps_custom");
-			n_fps = (int)obs_data_get_int(settings, "fps");
-			n_shutdown = obs_data_get_bool(settings, "shutdown");
-			n_restart = obs_data_get_bool(settings,
-						      "restart_when_active");
-			n_css = obs_data_get_string(settings, "css");
-			n_browser_options = obs_data_get_string(settings, "browser_options");
-			
-			n_url = obs_data_get_string(
-				settings, n_is_local ? "local_file" : "url");
-			n_reroute =
-				obs_data_get_bool(settings, "reroute_audio");
+		n_is_media_flag = obs_data_get_bool(settings, "is_media_flag");
+		n_is_local = obs_data_get_bool(settings, "is_local_file");
+		n_width = (int)obs_data_get_int(settings, "width");
+		n_height = (int)obs_data_get_int(settings, "height");
+		n_fps_custom = obs_data_get_bool(settings, "fps_custom");
+		n_fps = (int)obs_data_get_int(settings, "fps");
+		n_shutdown = obs_data_get_bool(settings, "shutdown");
+		n_restart = obs_data_get_bool(settings, "restart_when_active");
+		n_css = obs_data_get_string(settings, "css");
+		n_browser_options = obs_data_get_string(settings, "browser_options");
+		n_url = obs_data_get_string(settings,
+					    n_is_local ? "local_file" : "url");
+		n_reroute = obs_data_get_bool(settings, "reroute_audio");
 
-			if (n_is_local && !n_url.empty()) {
-				n_url = CefURIEncode(n_url, false);
+		if (n_is_local && !n_url.empty()) {
+			n_url = CefURIEncode(n_url, false);
 
 #ifdef _WIN32
 				size_t slash = n_url.find("%2F");
@@ -596,31 +585,29 @@ void BrowserSource::Update(obs_data_t *settings)
 				n_is_local = true;
 			}
 #endif
-			if (n_is_local == is_local && n_width == width &&
-			    n_height == height && n_fps_custom == fps_custom &&
-			    n_fps == fps &&
-			    n_shutdown == shutdown_on_invisible &&
-			    n_restart == restart && n_css == css && n_browser_options == browser_options &&
-			    n_url == url && n_reroute == reroute_audio &&
-			    n_is_media_flag == is_media_flag) {
-				return;
-			}
-
-			is_media_flag = n_is_media_flag;
-			is_local = n_is_local;
-			width = n_width;
-			height = n_height;
-			fps = n_fps;
-			fps_custom = n_fps_custom;
-			shutdown_on_invisible = n_shutdown;
-			reroute_audio = n_reroute;
-			restart = n_restart;
-			css = n_css;
-			browser_options = n_browser_options;
-			url = n_url;
-
-			obs_source_set_audio_active(source, reroute_audio);
+		if (n_is_local == is_local && n_width == width &&
+		    n_height == height && n_fps_custom == fps_custom &&
+		    n_fps == fps && n_shutdown == shutdown_on_invisible &&
+		    n_restart == restart && n_css == css && n_browser_options == browser_options && n_url == url &&
+		    n_reroute == reroute_audio && n_is_media_flag == is_media_flag) {
+			return;
 		}
+
+		is_media_flag = n_is_media_flag;
+		is_local = n_is_local;
+		width = n_width;
+		height = n_height;
+		fps = n_fps;
+		fps_custom = n_fps_custom;
+		shutdown_on_invisible = n_shutdown;
+		reroute_audio = n_reroute;
+		restart = n_restart;
+		css = n_css;
+		browser_options = n_browser_options;
+		url = n_url;
+
+		obs_source_set_audio_active(source, reroute_audio);
+	}
 
 		DestroyBrowser(true);
 		DestroyTextures();
@@ -742,68 +729,50 @@ std::map<std::string, std::string> GetNewBrowserOptions(std::string token_string
 	size_t pos = 0;
 	std::string token;
 	while ((pos = token_string.find(' ')) != std::string::npos) {
-		if (pos == 0)
-			continue;
-
-		token = token_string.substr(0, pos);
-		parameterValueList.push_back(token);
-		token_string.erase(0, pos + 1);	// includes the ' '
+		if (pos != 0) {
+			token = token_string.substr(0, pos);
+			parameterValueList.push_back(token);
+		}
+		token_string.erase(0, pos + 1);
 	}
 	if (token_string.length() > 0)
 		parameterValueList.push_back(token_string);
 
 	// Clean up the values a bit so we don't have the -- because CEF doesn't want it
-	for (auto tv : parameterValueList)
-	{
+	for (auto&& tv : parameterValueList) {
 		size_t paramStartPos = 0;
-		size_t paramEndPos = string::npos;
 
-		// CEF doesn't seem to want this
-		/*if (tv._Starts_with("--"))
-		{
+		if (tv._Starts_with("--")) {
 			paramStartPos = 2;
-		}
-		else if (tv._Starts_with("-"))
-		{
-			paramStartPos = 1;
-		}*/
-
-		paramEndPos = tv.find_first_of('=');
-		if (paramEndPos != string::npos)
-		{
-			paramEndPos += 1;	// don't include '='
+		} else {
+			continue;
 		}
 
 		string paramString;
 		string valueString;
 
-
-
-		if (paramEndPos == std::string::npos)
-		{
+		size_t paramEndPos = tv.find_first_of('=');
+		if (paramEndPos == std::string::npos) {
 			paramEndPos = tv.length() - paramStartPos;
 			paramString = tv.substr(paramStartPos, paramEndPos);
 
-			// extra leading whitespace 
 			if (paramString.length() == 0)
 				continue;
 
 			parameters[paramString] = "";
 			blog(LOG_INFO, "Adding CEF parameter %s", paramString.c_str());
-			continue;	// no value to find			
-		}
-		else
-		{
-			paramString = tv.substr(paramStartPos);
+		} else {
+			size_t paramLen = paramEndPos - paramStartPos;
+			paramString = tv.substr(paramStartPos, paramLen);
 
-			// extra leading whitespace 
+			paramLen = tv.length() - paramEndPos - 1;
+			valueString = tv.substr(paramEndPos + 1, paramLen);
+
 			if (paramString.length() == 0)
 				continue;
 
-			string valueString = tv.substr(paramStartPos);
 			parameters[paramString] = valueString;
-
-			blog(LOG_INFO, "Adding CEF parameter %s = %s", parameters[valueString].c_str(), valueString.c_str());
+			blog(LOG_INFO, "Adding CEF parameter %s = %s", paramString.c_str(), valueString.c_str());
 		}
 	}
 

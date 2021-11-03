@@ -79,6 +79,9 @@ class BrowserApp : public CefApp,
 	CallbackMap callbackMap;
 	int callbackId;
 
+	// we can only have a single instance of the browser, so parameters are shared between them. 
+	static std::map<std::string, std::string> parameters;
+
 	// This is what the browser was launched with orriginally. The user may change this
 	CefMainArgs launchArgs;
 
