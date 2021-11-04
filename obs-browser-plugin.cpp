@@ -230,6 +230,7 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *browser_options_prop =
 		obs_properties_add_text(props, "browser_options",
 			obs_module_text("BrowserOptions"), OBS_TEXT_DEFAULT);
+	obs_property_set_visible(browser_options_prop, false);
 
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
