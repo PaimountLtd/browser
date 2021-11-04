@@ -119,8 +119,6 @@ void BrowserApp::OnBeforeChildProcessLaunch(
 		else
 			command_line->AppendSwitchWithValue(p.first, p.second);
 	}
-
-	//CefBrowserProcessHandler::OnBeforeChildProcessLaunch(command_line);
 }
 
 void BrowserApp::OnBeforeCommandLineProcessing(
@@ -176,7 +174,6 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");
 #endif
-	//CefApp::OnBeforeCommandLineProcessing(processType, command_line);
 }
 
 std::vector<std::string> exposedFunctions = {
