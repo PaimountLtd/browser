@@ -83,10 +83,16 @@ Descriptions for these events can be [found here](https://obsproject.com/docs/re
 Permissions required: NONE
 ```js
 /**
- * @type {number} level - The level of permissions. 0 for NONE, 1 for READ_ONLY, 2 for BASIC, 3 for ADVANCED and 4 for ALL
- *
- * @param {function} callback
- * @returns {Level}
+ * @typedef {number} Level - The level of permissions. 0 for NONE, 1 for READ_ONLY, 2 for BASIC, 3 for ADVANCED and 4 for ALL
+ */
+
+/**
+ * @callback LevelCallback
+ * @param {Level} level
+ */
+
+/**
+ * @param {LevelCallback} cb - The callback that receives the current control level.
  */
 window.obsstudio.getControlLevel(function (level) {
     console.log(level)
@@ -101,12 +107,12 @@ Permissions required: READ_ONLY
  */
 
 /**
- * @callback LevelCallback
- * @param {Level} level
+ * @callback SceneCallback
+ * @param {Scene} scene
  */
 
 /**
- * @param {LevelCallback} cb - The callback that receives the current control level.
+ * @param {SceneCallback} cb - The callback that receives the current scene in OBS.
  */
 window.obsstudio.getControlLevel(function (level) {
     console.log(level)
