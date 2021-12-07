@@ -754,6 +754,24 @@ static void check_hwaccel_support(void)
 // #include <grpcpp/grpcpp.h>
 
 BrowserGRPCClient* bc;
+#include <locale>
+#include <codecvt>
+static thread_local std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>>
+	converter;
+
+std::wstring from_utf8_to_utf16_wide(const char *from, size_t length = -1)
+{
+	const char *from_end;
+
+	if (length == 0)
+		return {};
+	else if (length != -1)
+		from_end = from + length;
+	else
+		return converter.from_bytes(from);
+
+	return converter.from_bytes(from, from_end);
+}
 
 bool obs_module_load(void)
 {
@@ -762,11 +780,13 @@ bool obs_module_load(void)
 	path = path.substr(0, path.find_last_of('/') + 1);
 	path += "//obs_browser_server.exe";
 
+	const std::wstring utfProgram(from_utf8_to_utf16_wide(path.c_str()));
+
 	STARTUPINFO info={sizeof(info)};
 	PROCESS_INFORMATION processInfo;
 
 	BOOL success = CreateProcess(
-	    TEXT(path.c_str()),
+	    utfProgram.c_str(),
 	    NULL,
 	    NULL,
 	    NULL,

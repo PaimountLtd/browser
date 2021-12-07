@@ -17,11 +17,8 @@
  ******************************************************************************/
 
 #include "browser-client.hpp"
-// #include "obs-browser-source.hpp"
 #include "base64/base64.hpp"
 #include "json11/json11.hpp"
-#include <obs.hpp>
-#include <util/platform.h>
 #include <iostream>
 #include <vector>
 
@@ -277,34 +274,34 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
 }
 // #endif
 
-#if CHROME_VERSION_BUILD >= 3683
-static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
-{
-	switch (cefLayout) {
-	case CEF_CHANNEL_LAYOUT_MONO:
-		return SPEAKERS_MONO; /**< Channels: MONO */
-	case CEF_CHANNEL_LAYOUT_STEREO:
-		return SPEAKERS_STEREO; /**< Channels: FL, FR */
-	case CEF_CHANNEL_LAYOUT_2POINT1:
-		return SPEAKERS_2POINT1; /**< Channels: FL, FR, LFE */
-	case CEF_CHANNEL_LAYOUT_2_2:
-	case CEF_CHANNEL_LAYOUT_QUAD:
-	case CEF_CHANNEL_LAYOUT_4_0:
-		return SPEAKERS_4POINT0; /**< Channels: FL, FR, FC, RC */
-	case CEF_CHANNEL_LAYOUT_4_1:
-		return SPEAKERS_4POINT1; /**< Channels: FL, FR, FC, LFE, RC */
-	case CEF_CHANNEL_LAYOUT_5_1:
-	case CEF_CHANNEL_LAYOUT_5_1_BACK:
-		return SPEAKERS_5POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR */
-	case CEF_CHANNEL_LAYOUT_7_1:
-	case CEF_CHANNEL_LAYOUT_7_1_WIDE_BACK:
-	case CEF_CHANNEL_LAYOUT_7_1_WIDE:
-		return SPEAKERS_7POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR, SL, SR */
-	default:
-		return SPEAKERS_UNKNOWN;
-	}
-}
-#endif
+//#if CHROME_VERSION_BUILD >= 3683
+//static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
+//{
+//	switch (cefLayout) {
+//	case CEF_CHANNEL_LAYOUT_MONO:
+//		return SPEAKERS_MONO; /**< Channels: MONO */
+//	case CEF_CHANNEL_LAYOUT_STEREO:
+//		return SPEAKERS_STEREO; /**< Channels: FL, FR */
+//	case CEF_CHANNEL_LAYOUT_2POINT1:
+//		return SPEAKERS_2POINT1; /**< Channels: FL, FR, LFE */
+//	case CEF_CHANNEL_LAYOUT_2_2:
+//	case CEF_CHANNEL_LAYOUT_QUAD:
+//	case CEF_CHANNEL_LAYOUT_4_0:
+//		return SPEAKERS_4POINT0; /**< Channels: FL, FR, FC, RC */
+//	case CEF_CHANNEL_LAYOUT_4_1:
+//		return SPEAKERS_4POINT1; /**< Channels: FL, FR, FC, LFE, RC */
+//	case CEF_CHANNEL_LAYOUT_5_1:
+//	case CEF_CHANNEL_LAYOUT_5_1_BACK:
+//		return SPEAKERS_5POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR */
+//	case CEF_CHANNEL_LAYOUT_7_1:
+//	case CEF_CHANNEL_LAYOUT_7_1_WIDE_BACK:
+//	case CEF_CHANNEL_LAYOUT_7_1_WIDE:
+//		return SPEAKERS_7POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR, SL, SR */
+//	default:
+//		return SPEAKERS_UNKNOWN;
+//	}
+//}
+//#endif
 
 #if CHROME_VERSION_BUILD >= 4103
 void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser,

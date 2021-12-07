@@ -26,9 +26,7 @@
 #include "helloworld.grpc.pb.h"
 #endif
 
-#include <graphics/graphics.h>
 #include "cef-headers.hpp"
-// #include "browser-config.h"
 #include <mutex>
 
 using grpc::ServerUnaryReactor;

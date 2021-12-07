@@ -26,6 +26,8 @@ add_custom_command(
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+find_package(Threads REQUIRED)
+
 # hw_grpc_proto
 add_library(hw_grpc_proto STATIC
 	${hw_grpc_srcs}
@@ -35,24 +37,10 @@ add_library(hw_grpc_proto STATIC
 target_link_libraries(hw_grpc_proto
 	${_REFLECTION}
 	${_GRPC_GRPCPP}
-	${_PROTOBUF_LIBPROTOBUF})
+	${_PROTOBUF_LIBPROTOBUF}
+	Threads::Threads)
 
 # ----------------------------------------------------------------------------
-
-SET(PATH_OBS_STUDIO "" CACHE PATH "OBS Studio Source Code Directory")
-if(PATH_OBS_STUDIO STREQUAL "")
-	message(FATAL_ERROR "PATH_OBS_STUDIO not set!")
-	return()
-endif()
-if(NOT EXISTS "${PATH_OBS_STUDIO}/libobs/obs-module.h")
-	message(FATAL_ERROR "PATH_OBS_STUDIO is invalid!")
-	return()
-endif()
-
-SET(obsPath "${PATH_OBS_STUDIO}")
-INCLUDE("${PATH_OBS_STUDIO}/cmake/external/Findlibobs.cmake")
-include_directories("${PATH_OBS_STUDIO}/libobs")
-find_package(LibObs REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
@@ -60,7 +48,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps")
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
 
 option(BROWSER_LEGACY "Use legacy CEF version 3770" OFF)
 
@@ -384,76 +371,77 @@ if (UNIX AND NOT APPLE)
 endif()
 
 if (WIN32)
-	# math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
+	math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 
-	# install(
-	# 	DIRECTORY "${CEF_ROOT_DIR}/Resources/"
-	# 	DESTINATION OBS_PLUGIN_DESTINATION
-	# )
+	install(
+		DIRECTORY "${CEF_ROOT_DIR}/Resources/"
+		DESTINATION "${OBS_PLUGIN_DESTINATION}"
+	)
 
-	# install(FILES
-	# 	"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libcef.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libEGL.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
-	# 	"${CEF_ROOT_DIR}/Release/natives_blob.bin"
-	# 	"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
-	# 	"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
-	# 	DESTINATION OBS_PLUGIN_DESTINATION
-	# 	CONFIGURATIONS Debug
-	# )
+	install(FILES
+		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
+		"${CEF_ROOT_DIR}/Release/libcef.dll"
+		"${CEF_ROOT_DIR}/Release/libEGL.dll"
+		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
+		"${CEF_ROOT_DIR}/Release/natives_blob.bin"
+		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
+		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
+		DESTINATION "${OBS_PLUGIN_DESTINATION}"
+		CONFIGURATIONS Debug
+	)
 
-	# install(FILES
-	# 	"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libcef.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libEGL.dll"
-	# 	"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
-	# 	"${CEF_ROOT_DIR}/Release/natives_blob.bin"
-	# 	"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
-	# 	"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
-	# 	DESTINATION OBS_PLUGIN_DESTINATION
-	# 	CONFIGURATIONS Release RelWithDebInfo MinSizeRel
-	# )
+	install(FILES
+		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
+		"${CEF_ROOT_DIR}/Release/libcef.dll"
+		"${CEF_ROOT_DIR}/Release/libEGL.dll"
+		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
+		"${CEF_ROOT_DIR}/Release/natives_blob.bin"
+		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
+		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
+		DESTINATION "${OBS_PLUGIN_DESTINATION}"
+		CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+	)
 
-	# target_sources(obs-browser-page
-	# 	PRIVATE obs-browser-page.manifest
-	# )
+	target_sources(obs-browser-page
+		PRIVATE obs-browser-page.manifest
+	)
 
-	# add_custom_command(TARGET obs-browser POST_BUILD
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/libcef.dll"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/libEGL.dll"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	COMMAND ${CMAKE_COMMAND} -E copy
-	# 	"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
-	# 	"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# )
-	# if(EXISTS "${CEF_ROOT_DIR}/Release/natives_blob.bin")
-	# 	add_custom_command(TARGET obs-browser POST_BUILD
-	# 		COMMAND ${CMAKE_COMMAND} -E copy
-	# 		"${CEF_ROOT_DIR}/Release/natives_blob.bin"
-	# 		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
-	# 	)
-	# endif()
+	add_custom_command(TARGET obs-browser POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/libcef.dll"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/libEGL.dll"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		COMMAND ${CMAKE_COMMAND} -E copy
+		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+	)
+	if(EXISTS "${CEF_ROOT_DIR}/Release/natives_blob.bin")
+		add_custom_command(TARGET obs-browser POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy
+			"${CEF_ROOT_DIR}/Release/natives_blob.bin"
+			"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		)
+	endif()
 endif()
 
 if (UNIX AND NOT APPLE)
-	# install(DIRECTORY "${CEF_ROOT_DIR}/Resources/" DESTINATION "${OBS_PLUGIN_DESTINATION}")
-	# install(DIRECTORY "${CEF_ROOT_DIR}/Release/" DESTINATION "${OBS_PLUGIN_DESTINATION}")
+	install(DIRECTORY "${CEF_ROOT_DIR}/Resources/" DESTINATION "${OBS_PLUGIN_DESTINATION}")
+	install(DIRECTORY "${CEF_ROOT_DIR}/Release/" DESTINATION "${OBS_PLUGIN_DESTINATION}")
 endif()
 
-# install_obs_plugin_with_data(obs-browser data)
-# if(BROWSER_LEGACY OR NOT APPLE)
-# install_obs_plugin(obs-browser-page)
-# endif()
+install_obs_plugin_with_data(obs-browser data)
+if(BROWSER_LEGACY OR NOT APPLE)
+install_obs_plugin(obs-browser-page)
+install_obs_plugin(obs_browser_server)
+endif()

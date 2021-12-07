@@ -46,7 +46,7 @@ if(GRPC_AS_SUBMODULE)
   # Include the gRPC's cmake build (normally grpc source code would live
   # in a git submodule called "third_party/grpc", but this example lives in
   # the same repository as gRPC sources, so we just look a few directories up)
-  add_subdirectory(../../.. ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
+  add_subdirectory(grpc ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
   message(STATUS "Using gRPC via add_subdirectory.")
 
   # After using add_subdirectory, we can now use the grpc targets directly from
@@ -77,7 +77,7 @@ elseif(GRPC_FETCHCONTENT)
     # v1.25.0, v1.26.0 etc..
     # For the purpose of testing, we override the tag used to the commit
     # that's currently under test.
-    GIT_TAG        vGRPC_TAG_VERSION_OF_YOUR_CHOICE)
+    GIT_TAG        v1.42.0)
   FetchContent_MakeAvailable(grpc)
 
   # Since FetchContent uses add_subdirectory under the hood, we can use
