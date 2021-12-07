@@ -65,8 +65,17 @@ static void BrowserInit(
 	std::string obs_conf_path, std::string obs_browser_subprocess_path,
 	bool hwaccel)
 {
-	// Enable High-DPI support on Windows 7 or newer.
+#ifdef _WIN32
+	/* CefEnableHighDPISupport doesn't do anything on OS other than Windows. Would also crash macOS at this point as CEF is not directly linked */
 	CefEnableHighDPISupport();
+#else
+#if defined(__APPLE__) && !defined(BROWSER_LEGACY)
+	/* Load CEF at runtime as required on macOS */
+	CefScopedLibraryLoader library_loader;
+	if (!library_loader.LoadInMain())
+		return false;
+#endif
+#endif
 
 	CefMainArgs args;
 
@@ -288,13 +297,14 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		bool showing = request->showing();
 		ExecuteOnBrowser(
 			[=](CefRefPtr<CefBrowser> cefBrowser) {
 				CefRefPtr<CefProcessMessage> msg =
 					CefProcessMessage::Create("Visibility");
 				CefRefPtr<CefListValue> args =
 					msg->GetArgumentList();
-				args->SetBool(0, request->showing());
+				args->SetBool(0, showing);
 				SendBrowserProcessMessage(cefBrowser,
 							  PID_RENDERER, msg);
 			}, browserClients[request->id()]->cefBrowser, true);
@@ -315,12 +325,13 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		}
 
 		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		bool active = request->active();
 		ExecuteOnBrowser(
 			[=](CefRefPtr<CefBrowser> cefBrowser) {
 				CefRefPtr<CefProcessMessage> msg =
 					CefProcessMessage::Create("Active");
 				CefRefPtr<CefListValue> args = msg->GetArgumentList();
-				args->SetBool(0, request->active());
+				args->SetBool(0, active);
 				SendBrowserProcessMessage(cefBrowser, PID_RENDERER,
 							msg);
 			}, browserClients[request->id()]->cefBrowser, true);
@@ -356,6 +367,10 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		CallbackServerContext* context,
 		const IdRequest* request,
 		SignalBeginFrameReply* reply) override {
+		// ServerUnaryReactor* reactor = context->DefaultReactor();
+		// reactor->Finish(Status::OK);
+		// return reactor;
+
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 		if (!browserClients[request->id()]) {
 			ServerUnaryReactor* reactor = context->DefaultReactor();
@@ -368,6 +383,9 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			[](CefRefPtr<CefBrowser> cefBrowser) {
 				cefBrowser->GetHost()->SendExternalBeginFrame();
 			}, browserClients[request->id()]->cefBrowser, true);
+
+		if (browserClients[request->id()]->SignalBeginFrame_requested)
+			browserClients[request->id()]->SignalBeginFrame_reactor->Finish(Status::OK);
 
 		browserClients[request->id()]->SignalBeginFrame_requested = true;
 		browserClients[request->id()]->SignalBeginFrame_reactor = context->DefaultReactor();

@@ -771,7 +771,7 @@ bool obs_module_load(void)
 	    NULL,
 	    NULL,
 	    FALSE,
-	    CREATE_NEW_CONSOLE,
+	    CREATE_NO_WINDOW | DETACHED_PROCESS,
 	    NULL,
 	    NULL,
 	    &info,

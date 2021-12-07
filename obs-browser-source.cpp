@@ -360,8 +360,8 @@ void BrowserSource::Refresh()
 
 void BrowserSource::RenderSharedTexture(void* shared_handle)
 {
-	if (!reset_frame)
-		return;
+	// if (!reset_frame)
+	// 	return;
 
 	if (shared_handle && this->last_handle != shared_handle) {
 		obs_enter_graphics();
@@ -376,12 +376,17 @@ void BrowserSource::RenderSharedTexture(void* shared_handle)
 		last_handle = shared_handle;
 	}
 
-	reset_frame = false;
+	// reset_frame = false;
 }
 
 inline void BrowserSource::SignalBeginFrame()
 {
-	bc->SignalBeginFrame(this);
+	if (reset_frame) {
+		bc->SignalBeginFrame(this);
+		reset_frame = false;
+	} else {
+		blog(LOG_INFO, "frame not ready to be rendered");
+	}
 	// if (reset_frame) {
 	// 	void* shared_handle = bc->SignalBeginFrame((uint64_t) &source);
 	// 	if (shared_handle && this->last_handle != shared_handle) {

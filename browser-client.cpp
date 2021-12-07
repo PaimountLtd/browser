@@ -39,13 +39,8 @@ BrowserClient::~BrowserClient()
 	if (OnAudioStreamPacket_requested && OnAudioStreamPacket_reactor)
 		OnAudioStreamPacket_reactor->Finish(Status::OK);
 
-// #if defined(SHARED_TEXTURE_SUPPORT_ENABLED) && USE_TEXTURE_COPY
-// 	if (sharing_available) {
-// 		obs_enter_graphics();
-// 		gs_texture_destroy(texture);
-// 		obs_leave_graphics();
-// 	}
-// #endif
+	if (SignalBeginFrame_requested && SignalBeginFrame_reactor)
+		SignalBeginFrame_reactor->Finish(Status::OK);
 }
 
 CefRefPtr<CefLoadHandler> BrowserClient::GetLoadHandler()
@@ -190,9 +185,9 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 			    const RectList &, const void *buffer, int width,
 			    int height)
 {
-// 	if (type != PET_VIEW) {
-// 		return;
-// 	}
+	if (type != PET_VIEW) {
+		return;
+	}
 
 // #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 // 	if (sharing_available) {

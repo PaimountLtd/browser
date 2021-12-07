@@ -99,25 +99,19 @@ void BrowserGRPCClient::Refresh(uint64_t sourceId) {
   stub_->Refresh(&context, request, &reply);
 }
 
-// void* BrowserGRPCClient::SignalBeginFrame(uint64_t sourceId) {
-//   IdRequest request;
-//   request.set_id(sourceId);
-//   SignalBeginFrameResponse reply;
-//   ClientContext context;
-//   stub_->SignalBeginFrame(&context, request, &reply);
-//   return (void*)reply.shared_handle();
-// }
-
 void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
-  // IdRequest* request = new IdRequest();
-  // request->set_id((uint64_t) &bs->source);
+  IdRequest* request = new IdRequest();
+  // IdRequest request;
+  // request.set_id((uint64_t) &bs->source);
+  request->set_id((uint64_t) &bs->source);
 
-  // SignalBeginFrameReply* reply = new SignalBeginFrameReply();
-  // ClientContext* context = new ClientContext();
-  // stub_->async()->SignalBeginFrame(context, request, reply,
-  //                           [bs, reply, this](Status s) {
-  //                             bs->RenderSharedTexture((void*)reply->shared_handle());
-  //                         });
+  SignalBeginFrameReply* reply = new SignalBeginFrameReply();
+  ClientContext* context = new ClientContext();
+  stub_->async()->SignalBeginFrame(context, request, reply,
+                            [bs, reply, this](Status s) {
+                              bs->RenderSharedTexture((void*)reply->shared_handle());
+                          });
+  // stub_->SignalBeginFrame(context, request, reply);
 }
 
 void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {
