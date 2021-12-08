@@ -778,7 +778,7 @@ bool obs_module_load(void)
 	blog(LOG_INFO, "[obs-browser]: loading module");
 	std::string path = obs_get_module_binary_path(obs_current_module());
 	path = path.substr(0, path.find_last_of('/') + 1);
-	path += "//obs_browser_server.exe";
+	path += "//obs-browser-server.exe";
 
 	const std::wstring utfProgram(from_utf8_to_utf16_wide(path.c_str()));
 

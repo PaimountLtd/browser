@@ -89,8 +89,8 @@ include_directories("${CEF_ROOT_DIR}")
 
 # ----------------------------------------------------------------------------
 
-set(obs_browser_server_SOURCES
-  obs_browser_server.cc
+set(obs-browser-server_SOURCES
+  obs-browser-server.cpp
   browser-scheme.cpp
   browser-client.cpp
   browser-app.cpp
@@ -106,13 +106,13 @@ set(obs_browser_server_SOURCES
   cef-headers.hpp
 )
 
-add_executable(obs_browser_server
-  ${obs_browser_server_SOURCES}
+add_executable(obs-browser-server
+  ${obs-browser-server_SOURCES}
   ${hw_proto_srcs}
   ${hw_grpc_srcs}
 )
 
-target_link_libraries(obs_browser_server
+target_link_libraries(obs-browser-server
   hw_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
@@ -443,5 +443,5 @@ endif()
 install_obs_plugin_with_data(obs-browser data)
 if(BROWSER_LEGACY OR NOT APPLE)
 install_obs_plugin(obs-browser-page)
-install_obs_plugin(obs_browser_server)
+install_obs_plugin(obs-browser-server)
 endif()
