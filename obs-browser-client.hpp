@@ -41,6 +41,7 @@ using helloworld::OnAudioStreamStartedReply;
 using helloworld::OnAudioStreamPacketReply;
 using helloworld::OnAudioStreamPacketRequest;
 using helloworld::OnAudioStreamStoppedReply;
+using helloworld::RequestPaintReply;
 
 extern bool hwaccel;
 
@@ -62,7 +63,10 @@ public:
   void SetShowing(uint64_t sourceId, bool showing);
   void SetActive(uint64_t sourceId, bool active);
   void Refresh(uint64_t sourceId);
+#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
   void SignalBeginFrame(BrowserSource* bs);
+#endif
+  void RequestPaint(BrowserSource* bs);
   void DestroyBrowserSource(uint64_t sourceId, bool async);
   void ShutdownBrowserCEF();
   

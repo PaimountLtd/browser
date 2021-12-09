@@ -24,6 +24,7 @@ service BrowserServer {
   rpc OnAudioStreamStarted (IdRequest) returns (OnAudioStreamStartedReply);
   rpc OnAudioStreamPacket (OnAudioStreamPacketRequest) returns (OnAudioStreamPacketReply);
   rpc OnAudioStreamStopped (IdRequest) returns (OnAudioStreamStoppedReply);
+  rpc RequestPaint (IdRequest) returns (RequestPaintReply);
 }
 
 message Request {
@@ -115,4 +116,10 @@ message OnAudioStreamPacketReply {
 
 message OnAudioStreamStoppedReply {
   int32 id = 1;
+}
+
+message RequestPaintReply {
+  int32 width = 1;
+  int32 height = 2;
+  repeated bytes data = 3;
 }

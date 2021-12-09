@@ -186,6 +186,22 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 		return;
 	}
 
+	std::lock_guard<std::mutex> lock_client(browser_mtx);
+	if (OnPaint_requested) {
+		const uint8_t *frameData = (const uint8_t *)buffer;
+		if (frameData[0]) {
+			std::string data((const char *)buffer, width * height * 4);
+			OnPaint_reply->add_data(data);
+			OnPaint_reply->set_width(width);
+			OnPaint_reply->set_height(height);
+			OnPaint_requested = false;
+			OnPaint_reactor->Finish(Status::OK);
+		}
+
+	} else {
+		std::cout << "frame dropped" << std::endl;
+	}
+
 // #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 // 	if (sharing_available) {
 // 		return;

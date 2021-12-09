@@ -35,6 +35,7 @@ using helloworld::OnAudioStreamStartedReply;
 using helloworld::OnAudioStreamPacketReply;
 using helloworld::OnAudioStreamStoppedReply;
 using helloworld::SignalBeginFrameReply;
+using helloworld::RequestPaintReply;
 
 #define USE_TEXTURE_COPY 0
 
@@ -87,6 +88,10 @@ public:
 	ServerUnaryReactor* SignalBeginFrame_reactor = nullptr;
 	SignalBeginFrameReply* SignalBeginFrame_reply = nullptr;
 	bool SignalBeginFrame_requested = false;
+
+	ServerUnaryReactor* OnPaint_reactor = nullptr;
+	RequestPaintReply* OnPaint_reply = nullptr;
+	bool OnPaint_requested = false;
 
 	int sample_rate;
 	ChannelLayout channel_layout;

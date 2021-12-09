@@ -112,12 +112,12 @@ bool hwaccel = false;
 // 	IMPLEMENT_REFCOUNTING(BrowserTask);
 // };
 
-bool QueueCEFTask(std::function<void()> task)
-{
-	return false;
-	// return CefPostTask(TID_UI,
-	// 		   CefRefPtr<BrowserTask>(new BrowserTask(task)));
-}
+// bool QueueCEFTask(std::function<void()> task)
+// {
+// 	return false;
+// 	// return CefPostTask(TID_UI,
+// 	// 		   CefRefPtr<BrowserTask>(new BrowserTask(task)));
+// }
 
 // /* ========================================================================= */
 

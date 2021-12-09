@@ -41,8 +41,6 @@
 using namespace std;
 using namespace json11;
 
-extern bool QueueCEFTask(std::function<void()> task);
-
 static mutex browser_list_mutex;
 static BrowserSource *first_browser = nullptr;
 
@@ -93,53 +91,6 @@ BrowserSource::~BrowserSource()
 	if (next)
 		next->p_prev_next = p_prev_next;
 	*p_prev_next = next;
-}
-
-void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
-{
-	if (!async) {
-#ifdef USE_UI_LOOP
-#ifdef WIN32
-		if (QThread::currentThread() == qApp->thread()) {
-#elif __APPLE__
-		if (isMainThread()) {
-#endif
-			if (!!cefBrowser)
-				func(cefBrowser);
-			return;
-		}
-#endif
-		os_event_t *finishedEvent;
-		os_event_init(&finishedEvent, OS_EVENT_TYPE_AUTO);
-#ifdef WIN32
-		bool success = QueueCEFTask([&]() {
-#elif defined(USE_UI_LOOP) && defined(__APPLE__)
-		ExecuteTask([&]() {
-#endif
-			if (!!cefBrowser)
-				func(cefBrowser);
-			os_event_signal(finishedEvent);
-		});
-#ifdef WIN32
-		if (success) {
-#endif
-			os_event_wait(finishedEvent);
-#ifdef WIN32
-		}
-#endif
-		os_event_destroy(finishedEvent);
-	} else {
-		CefRefPtr<CefBrowser> browser = cefBrowser;
-		if (!!browser) {
-#if defined(USE_UI_LOOP) && defined(WIN32)
-			QueueBrowserTask(cefBrowser, func);
-#elif defined(USE_UI_LOOP) && defined(__APPLE__)
-			QueueBrowserTask(cefBrowser, func);
-#else
-			QueueCEFTask([=]() { func(browser); });
-#endif
-		}
-	}
 }
 
 #if CHROME_VERSION_BUILD >= 3683
@@ -262,15 +213,15 @@ void BrowserSource::DestroyBrowser(bool async)
 #if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
 void BrowserSource::ClearAudioStreams()
 {
-#ifdef WIN32
-	QueueCEFTask([this]() {
-#elif defined(USE_UI_LOOP) && defined(__APPLE__)
-	ExecuteTask([this]() {
-#endif
-		audio_streams.clear();
-		std::lock_guard<std::mutex> lock(audio_sources_mutex);
-		audio_sources.clear();
-	});
+// #ifdef WIN32
+// 	QueueCEFTask([this]() {
+// #elif defined(USE_UI_LOOP) && defined(__APPLE__)
+// 	ExecuteTask([this]() {
+// #endif
+// 		audio_streams.clear();
+// 		std::lock_guard<std::mutex> lock(audio_sources_mutex);
+// 		audio_sources.clear();
+// 	});
 }
 #endif
 void BrowserSource::SendMouseClick(const struct obs_mouse_event *event,
@@ -407,6 +358,40 @@ inline void BrowserSource::SignalBeginFrame()
 }
 #endif
 #endif
+
+void BrowserSource::RenderFrame(int width, int height,
+	::google::protobuf::RepeatedPtrField<string>* buffer)
+{
+	if (!width || !height)
+		return;
+
+	if (this->width != width || this->height != height) {
+		obs_enter_graphics();
+		DestroyTextures();
+		obs_leave_graphics();
+	}
+
+	const uint8_t *data = (const uint8_t *)buffer->begin()->data();
+	if (!this->texture && width && height) {
+		obs_enter_graphics();
+		this->texture = gs_texture_create(width, height, GS_BGRA, 1,
+						(const uint8_t **)&data,
+						GS_DYNAMIC);
+		this->width = width;
+		this->height = height;
+		obs_leave_graphics();
+	} else {
+		obs_enter_graphics();
+		gs_texture_set_image(this->texture, data,
+				     width * 4, false);
+		obs_leave_graphics();
+	}
+}
+
+void BrowserSource::RequestPaint()
+{
+	bc->RequestPaint(this);
+}
 
 void BrowserSource::Update(obs_data_t *settings)
 {
@@ -549,10 +534,8 @@ void BrowserSource::Render()
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	SignalBeginFrame();
-#elif defined(USE_UI_LOOP) && defined(WIN32)
-	ProcessCef();
-#elif defined(USE_UI_LOOP) && defined(__APPLE__)
-	Process();
+#else
+	RequestPaint();
 #endif
 }
 
@@ -566,33 +549,33 @@ static void ExecuteOnBrowser(BrowserFunc func, BrowserSource *bs)
 	}
 }
 
-static void ExecuteOnAllBrowsers(BrowserFunc func)
-{
-	lock_guard<mutex> lock(browser_list_mutex);
+// static void ExecuteOnAllBrowsers(BrowserFunc func)
+// {
+// 	lock_guard<mutex> lock(browser_list_mutex);
 
-	BrowserSource *bs = first_browser;
-	while (bs) {
-		BrowserSource *bsw = reinterpret_cast<BrowserSource *>(bs);
-		bsw->ExecuteOnBrowser(func, true);
-		bs = bs->next;
-	}
-}
+// 	BrowserSource *bs = first_browser;
+// 	while (bs) {
+// 		BrowserSource *bsw = reinterpret_cast<BrowserSource *>(bs);
+// 		bsw->ExecuteOnBrowser(func, true);
+// 		bs = bs->next;
+// 	}
+// }
 
-void DispatchJSEvent(std::string eventName, std::string jsonString,
-		     BrowserSource *browser)
-{
-	const auto jsEvent = [=](CefRefPtr<CefBrowser> cefBrowser) {
-		CefRefPtr<CefProcessMessage> msg =
-			CefProcessMessage::Create("DispatchJSEvent");
-		CefRefPtr<CefListValue> args = msg->GetArgumentList();
+// void DispatchJSEvent(std::string eventName, std::string jsonString,
+// 		     BrowserSource *browser)
+// {
+// 	const auto jsEvent = [=](CefRefPtr<CefBrowser> cefBrowser) {
+// 		CefRefPtr<CefProcessMessage> msg =
+// 			CefProcessMessage::Create("DispatchJSEvent");
+// 		CefRefPtr<CefListValue> args = msg->GetArgumentList();
 
-		args->SetString(0, eventName);
-		args->SetString(1, jsonString);
-		SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg);
-	};
+// 		args->SetString(0, eventName);
+// 		args->SetString(1, jsonString);
+// 		SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg);
+// 	};
 
-	if (!browser)
-		ExecuteOnAllBrowsers(jsEvent);
-	else
-		ExecuteOnBrowser(jsEvent, browser);
-}
+// 	if (!browser)
+// 		ExecuteOnAllBrowsers(jsEvent);
+// 	else
+// 		ExecuteOnBrowser(jsEvent, browser);
+// }

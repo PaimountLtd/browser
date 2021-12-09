@@ -41,6 +41,7 @@ using helloworld::DestroyBrowserSourceRequest;
 using helloworld::MouseEventRequest;
 using helloworld::OnAudioStreamStartedReply;
 using helloworld::OnAudioStreamPacketRequest;
+using helloworld::RequestPaintReply;
 
 std::unique_ptr<Server> server;
 static CefRefPtr<BrowserApp> app;
@@ -415,6 +416,18 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 				cefBrowser->GetHost()->CloseBrowser(true);
 			}, browserClients[request->id()]->cefBrowser, request->async());
 
+		if (browserClients[request->id()]->OnPaint_requested &&
+			browserClients[request->id()]->OnPaint_reactor) {
+				browserClients[request->id()]
+					->OnPaint_reply->set_width(0);
+				browserClients[request->id()]
+					->OnPaint_reply->set_height(0);
+				browserClients[request->id()]
+					->OnPaint_reactor->Finish(Status::OK);
+				browserClients[request->id()]
+					->OnPaint_requested = false;
+			}
+
 		browserClients[request->id()]->cefBrowser = nullptr;
 		browserClients.erase(browserClients.find(request->id()));
 
@@ -694,6 +707,25 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		browserClients[request->id()]->OnAudioStreamStopped_reply = reply;
 		browserClients[request->id()]->OnAudioStreamStopped_pending = true;
 		return browserClients[request->id()]->OnAudioStreamStopped_reactor;
+	}
+
+	ServerUnaryReactor* RequestPaint(
+		CallbackServerContext* context,
+		const IdRequest* request,
+		RequestPaintReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()] ||
+		    browserClients[request->id()]->OnPaint_requested) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
+		
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		browserClients[request->id()]->OnPaint_requested = true;
+		browserClients[request->id()]->OnPaint_reactor = context->DefaultReactor();
+		browserClients[request->id()]->OnPaint_reply = reply;
+		return browserClients[request->id()]->OnPaint_reactor;
 	}
 };
 

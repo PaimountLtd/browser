@@ -99,10 +99,9 @@ void BrowserGRPCClient::Refresh(uint64_t sourceId) {
   stub_->Refresh(&context, request, &reply);
 }
 
+#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
   IdRequest* request = new IdRequest();
-  // IdRequest request;
-  // request.set_id((uint64_t) &bs->source);
   request->set_id((uint64_t) &bs->source);
 
   SignalBeginFrameReply* reply = new SignalBeginFrameReply();
@@ -111,7 +110,23 @@ void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
                             [bs, reply, this](Status s) {
                               bs->RenderSharedTexture((void*)reply->shared_handle());
                           });
-  // stub_->SignalBeginFrame(context, request, reply);
+}
+#endif
+
+void BrowserGRPCClient::RequestPaint(BrowserSource* bs) {
+  IdRequest* request = new IdRequest();
+  request->set_id((uint64_t) &bs->source);
+
+  RequestPaintReply* reply = new RequestPaintReply();
+  ClientContext* context = new ClientContext();
+  stub_->async()->RequestPaint(context, request, reply,
+                            [bs, reply, this](Status s) {
+                              bs->RenderFrame(
+                                reply->width(),
+                                reply->height(),
+                                reply->mutable_data()
+                              );
+                          });
 }
 
 void BrowserGRPCClient::DestroyBrowserSource(uint64_t sourceId, bool async) {
