@@ -10,11 +10,8 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#ifdef BAZEL_BUILD
-#include "examples/protos/helloworld.grpc.pb.h"
-#else
-#include "helloworld.grpc.pb.h"
-#endif
+#include "obs_browser_api.grpc.pb.h"
+
 
 #include "cef-headers.hpp"
 #include "browser-app.hpp"
@@ -28,20 +25,20 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
 using grpc::ServerUnaryReactor;
-using helloworld::BrowserServer;
-using helloworld::NoReply;
-using helloworld::Request;
-using helloworld::CreateRequest;
-using helloworld::SetShowingRequest;
-using helloworld::SetActiveRequest;
-using helloworld::NoArgs;
-using helloworld::SignalBeginFrameReply;
-using helloworld::IdRequest;
-using helloworld::DestroyBrowserSourceRequest;
-using helloworld::MouseEventRequest;
-using helloworld::OnAudioStreamStartedReply;
-using helloworld::OnAudioStreamPacketRequest;
-using helloworld::RequestPaintReply;
+using obs_browser_api::BrowserServer;
+using obs_browser_api::NoReply;
+using obs_browser_api::Request;
+using obs_browser_api::CreateRequest;
+using obs_browser_api::SetShowingRequest;
+using obs_browser_api::SetActiveRequest;
+using obs_browser_api::NoArgs;
+using obs_browser_api::SignalBeginFrameReply;
+using obs_browser_api::IdRequest;
+using obs_browser_api::DestroyBrowserSourceRequest;
+using obs_browser_api::MouseEventRequest;
+using obs_browser_api::OnAudioStreamStartedReply;
+using obs_browser_api::OnAudioStreamPacketRequest;
+using obs_browser_api::RequestPaintReply;
 
 std::unique_ptr<Server> server;
 static CefRefPtr<BrowserApp> app;

@@ -6,35 +6,35 @@ project(obs-browser C CXX)
 include(common.cmake)
 
 # Proto file
-get_filename_component(hw_proto "helloworld.proto" ABSOLUTE)
-get_filename_component(hw_proto_path "${hw_proto}" PATH)
+get_filename_component(bapi_proto "obs_browser_api.proto" ABSOLUTE)
+get_filename_component(bapi_proto_path "${bapi_proto}" PATH)
 
 # Generated sources
-set(hw_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.cc")
-set(hw_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.h")
-set(hw_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.cc")
-set(hw_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.h")
+set(bapi_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/obs_browser_api.pb.cc")
+set(bapi_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/obs_browser_api.pb.h")
+set(bapi_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/obs_browser_api.grpc.pb.cc")
+set(bapi_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/obs_browser_api.grpc.pb.h")
 add_custom_command(
-      OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
+      OUTPUT "${bapi_proto_srcs}" "${bapi_proto_hdrs}" "${bapi_grpc_srcs}" "${bapi_grpc_hdrs}"
       COMMAND ${_PROTOBUF_PROTOC}
       ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
         --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
-        -I "${hw_proto_path}"
+        -I "${bapi_proto_path}"
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
-        "${hw_proto}"
-      DEPENDS "${hw_proto}")
+        "${bapi_proto}"
+      DEPENDS "${bapi_proto}")
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 find_package(Threads REQUIRED)
 
-# hw_grpc_proto
-add_library(hw_grpc_proto STATIC
-	${hw_grpc_srcs}
-	${hw_grpc_hdrs}
-	${hw_proto_srcs}
-	${hw_proto_hdrs})
-target_link_libraries(hw_grpc_proto
+# bapi_grpc_proto
+add_library(bapi_grpc_proto STATIC
+	${bapi_grpc_srcs}
+	${bapi_grpc_hdrs}
+	${bapi_proto_srcs}
+	${bapi_proto_hdrs})
+target_link_libraries(bapi_grpc_proto
 	${_REFLECTION}
 	${_GRPC_GRPCPP}
 	${_PROTOBUF_LIBPROTOBUF}
@@ -108,12 +108,12 @@ set(obs-browser-server_SOURCES
 
 add_executable(obs-browser-server
   ${obs-browser-server_SOURCES}
-  ${hw_proto_srcs}
-  ${hw_grpc_srcs}
+  ${bapi_proto_srcs}
+  ${bapi_grpc_srcs}
 )
 
 target_link_libraries(obs-browser-server
-  hw_grpc_proto
+  bapi_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF}
@@ -129,7 +129,7 @@ set(obs-browser_LIBRARIES
 
 list(APPEND obs-browser_LIBRARIES
 	${CEF_LIBRARIES}
-	hw_grpc_proto
+	bapi_grpc_proto
 	${_REFLECTION}
 	${_GRPC_GRPCPP}
 	${_PROTOBUF_LIBPROTOBUF}
@@ -235,8 +235,8 @@ endif()
 add_library(obs-browser MODULE
 	${obs-browser_SOURCES}
 	${obs-browser_HEADERS}
-	${hw_proto_srcs}
-	${hw_grpc_srcs}
+	${bapi_proto_srcs}
+	${bapi_grpc_srcs}
 	)
 
 target_link_libraries(obs-browser
@@ -376,6 +376,12 @@ if (WIN32)
 	install(
 		DIRECTORY "${CEF_ROOT_DIR}/Resources/"
 		DESTINATION "${OBS_PLUGIN_DESTINATION}"
+	)
+
+	add_custom_command(TARGET obs-browser POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CEF_ROOT_DIR}/Resources"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
 	)
 
 	install(FILES

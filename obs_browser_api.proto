@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "io.grpc.examples.helloworld";
-option java_outer_classname = "HelloWorldProto";
+option java_package = "io.obs_browser_api";
+option java_outer_classname = "ObsBrowserProto";
 option objc_class_prefix = "HLW";
 
-package helloworld;
+package obs_browser_api;
 
 service BrowserServer {
   rpc IntializeBrowserCEF (Request) returns (NoReply) {};

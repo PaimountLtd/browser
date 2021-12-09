@@ -23,7 +23,7 @@
 #ifdef BAZEL_BUILD
 #include "examples/protos/helloworld.grpc.pb.h"
 #else
-#include "helloworld.grpc.pb.h"
+#include "obs_browser_api.grpc.pb.h"
 #endif
 
 #include "cef-headers.hpp"
@@ -31,11 +31,11 @@
 
 using grpc::ServerUnaryReactor;
 using grpc::Status;
-using helloworld::OnAudioStreamStartedReply;
-using helloworld::OnAudioStreamPacketReply;
-using helloworld::OnAudioStreamStoppedReply;
-using helloworld::SignalBeginFrameReply;
-using helloworld::RequestPaintReply;
+using obs_browser_api::OnAudioStreamStartedReply;
+using obs_browser_api::OnAudioStreamPacketReply;
+using obs_browser_api::OnAudioStreamStoppedReply;
+using obs_browser_api::SignalBeginFrameReply;
+using obs_browser_api::RequestPaintReply;
 
 #define USE_TEXTURE_COPY 0
 
