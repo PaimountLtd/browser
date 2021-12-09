@@ -105,43 +105,6 @@ bool BrowserClient::OnProcessMessageReceived(
  	const std::string &name = message->GetName();
  	Json json;
 
-// 	if (!bs) {
-// 		return false;
-// 	}
-
-// #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-// 	if (name == "getCurrentScene") {
-// 		OBSSource current_scene = obs_frontend_get_current_scene();
-// 		obs_source_release(current_scene);
-
-// 		if (!current_scene)
-// 			return false;
-
-// 		const char *name = obs_source_get_name(current_scene);
-// 		if (!name)
-// 			return false;
-
-// 		json = Json::object{
-// 			{"name", name},
-// 			{"width", (int)obs_source_get_width(current_scene)},
-// 			{"height", (int)obs_source_get_height(current_scene)}};
-
-// 	}
-// 	else if (name == "getStatus") {
-// 		json = Json::object {
-// 			{"recording", obs_frontend_recording_active()},
-// 			{"streaming", obs_frontend_streaming_active()},
-// 			{"recordingPaused", obs_frontend_recording_paused()},
-// 			{"replaybuffer", obs_frontend_replay_buffer_active()},
-// 			{"virtualcam", obs_frontend_virtualcam_active()}};
-
-// 	} else if (name == "saveReplayBuffer") {
-// 		obs_frontend_replay_buffer_save();
-// 	} else {
-// 		return false;
-// 	}
-// #endif
-
  	CefRefPtr<CefProcessMessage> msg =
  		CefProcessMessage::Create("executeCallback");
 
@@ -201,40 +164,8 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 	} else {
 		std::cout << "frame dropped" << std::endl;
 	}
-
-// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-// 	if (sharing_available) {
-// 		return;
-// 	}
-// #endif
-
-// 	if (!bs) {
-// 		return;
-// 	}
-
-// 	if (bs->width != width || bs->height != height) {
-// 		obs_enter_graphics();
-// 		bs->DestroyTextures();
-// 		obs_leave_graphics();
-// 	}
-
-// 	if (!bs->texture && width && height) {
-// 		obs_enter_graphics();
-// 		bs->texture = gs_texture_create(width, height, GS_BGRA, 1,
-// 						(const uint8_t **)&buffer,
-// 						GS_DYNAMIC);
-// 		bs->width = width;
-// 		bs->height = height;
-// 		obs_leave_graphics();
-// 	} else {
-// 		obs_enter_graphics();
-// 		gs_texture_set_image(bs->texture, (const uint8_t *)buffer,
-// 				     width * 4, false);
-// 		obs_leave_graphics();
-// 	}
 }
 
-// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
 				       const RectList &, void *shared_handle)
 {
@@ -245,79 +176,7 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
 		SignalBeginFrame_requested = false;
 		SignalBeginFrame_reactor->Finish(Status::OK);
 	}
-
-	// if (shared_handle != last_handle) 
-	// 	last_handle = shared_handle;
-
-	// 	if (!bs) {
-// 		return;
-// 	}
-
-// 	if (shared_handle != last_handle) {
-// 		obs_enter_graphics();
-// #if USE_TEXTURE_COPY
-// 		gs_texture_destroy(texture);
-// 		texture = nullptr;
-// #endif
-// 		gs_texture_destroy(bs->texture);
-// 		bs->texture = nullptr;
-
-// #if USE_TEXTURE_COPY
-// 		texture = gs_texture_open_shared(
-// 			(uint32_t)(uintptr_t)shared_handle);
-
-// 		uint32_t cx = gs_texture_get_width(texture);
-// 		uint32_t cy = gs_texture_get_height(texture);
-// 		gs_color_format format = gs_texture_get_color_format(texture);
-
-// 		bs->texture = gs_texture_create(cx, cy, format, 1, nullptr, 0);
-// #else
-// 		bs->texture = gs_texture_open_shared(
-// 			(uint32_t)(uintptr_t)shared_handle);
-// #endif
-// 		obs_leave_graphics();
-
-// 		last_handle = shared_handle;
-// 	}
-
-// #if USE_TEXTURE_COPY
-// 	if (texture && bs->texture) {
-// 		obs_enter_graphics();
-// 		gs_copy_texture(bs->texture, texture);
-// 		obs_leave_graphics();
-// 	}
-// #endif
 }
-// #endif
-
-//#if CHROME_VERSION_BUILD >= 3683
-//static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
-//{
-//	switch (cefLayout) {
-//	case CEF_CHANNEL_LAYOUT_MONO:
-//		return SPEAKERS_MONO; /**< Channels: MONO */
-//	case CEF_CHANNEL_LAYOUT_STEREO:
-//		return SPEAKERS_STEREO; /**< Channels: FL, FR */
-//	case CEF_CHANNEL_LAYOUT_2POINT1:
-//		return SPEAKERS_2POINT1; /**< Channels: FL, FR, LFE */
-//	case CEF_CHANNEL_LAYOUT_2_2:
-//	case CEF_CHANNEL_LAYOUT_QUAD:
-//	case CEF_CHANNEL_LAYOUT_4_0:
-//		return SPEAKERS_4POINT0; /**< Channels: FL, FR, FC, RC */
-//	case CEF_CHANNEL_LAYOUT_4_1:
-//		return SPEAKERS_4POINT1; /**< Channels: FL, FR, FC, LFE, RC */
-//	case CEF_CHANNEL_LAYOUT_5_1:
-//	case CEF_CHANNEL_LAYOUT_5_1_BACK:
-//		return SPEAKERS_5POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR */
-//	case CEF_CHANNEL_LAYOUT_7_1:
-//	case CEF_CHANNEL_LAYOUT_7_1_WIDE_BACK:
-//	case CEF_CHANNEL_LAYOUT_7_1_WIDE:
-//		return SPEAKERS_7POINT1; /**< Channels: FL, FR, FC, LFE, RL, RR, SL, SR */
-//	default:
-//		return SPEAKERS_UNKNOWN;
-//	}
-//}
-//#endif
 
 #if CHROME_VERSION_BUILD >= 4103
 void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser,
@@ -429,10 +288,6 @@ void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser, int id,
 		size_t size = frames * sizeof(float);
 
 		for (int i = 0; i < channels; i++) {
-			// if (pcm[i][0] == 0) {
-			// 	OnAudioStreamPacket_reply->add_data("");
-			// 	continue;
-			// }
 			std::string my_buffer2 (pcm[i], size);
 			OnAudioStreamPacket_reply->add_data(my_buffer2);
 		}
@@ -482,19 +337,6 @@ bool BrowserClient::OnConsoleMessage(CefRefPtr<CefBrowser>,
 				     const CefString &message,
 				     const CefString &source, int line)
 {
-	// int errorLevel = LOG_INFO;
-	// switch (level) {
-	// case LOGSEVERITY_ERROR:
-	// 	errorLevel = LOG_WARNING;
-	// 	break;
-	// case LOGSEVERITY_FATAL:
-	// 	errorLevel = LOG_ERROR;
-	// 	break;
-	// default:
-	// 	return false;
-	// }
-
-	// blog(errorLevel, "obs-browser: %s (source: %s:%d)",
-	//      message.ToString().c_str(), source.ToString().c_str(), line);
+	// NOT IMPLEMENTED
 	return false;
 }

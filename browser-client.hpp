@@ -98,13 +98,6 @@ public:
 	int frames_per_buffer;
 	std::string css;
 
-	// inline BrowserClient(BrowserSource *bs_, bool sharing_avail,
-	// 		     bool reroute_audio_)
-	// 	: sharing_available(sharing_avail),
-	// 	  reroute_audio(reroute_audio_),
-	// 	  bs(bs_)
-	// {
-	// }
 	inline BrowserClient(bool sharing_avail,
 			     bool reroute_audio_)
 		: sharing_available(sharing_avail),
@@ -174,12 +167,10 @@ public:
 			     PaintElementType type, const RectList &dirtyRects,
 			     const void *buffer, int width,
 			     int height) override;
-// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 	virtual void OnAcceleratedPaint(CefRefPtr<CefBrowser> browser,
 					PaintElementType type,
 					const RectList &dirtyRects,
 					void *shared_handle) override;
-// #endif
 #if CHROME_VERSION_BUILD >= 4103
 	virtual void OnAudioStreamPacket(CefRefPtr<CefBrowser> browser,
 					 const float **data, int frames,

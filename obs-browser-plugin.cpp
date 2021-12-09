@@ -29,19 +29,6 @@
 #include <string>
 #include <windows.h>
 
-// #include <sstream>
-// #include <thread>
-// #include <mutex>
-
-// #include "obs-browser-source.hpp"
-// #include "browser-scheme.hpp"
-// #include "browser-app.hpp"
-// #include "browser-version.h"
-// #include "browser-config.h"
-
-// #include "json11/json11.hpp"
-// #include "cef-headers.hpp"
-
 #ifdef _WIN32
 #include <util/windows/ComPtr.hpp>
 #include <dxgi.h>
@@ -50,14 +37,6 @@
 #include <winnt.h>
 #endif
 
-// #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-// #include <obs-frontend-api.h>
-// #endif
-
-// #if defined(USE_UI_LOOP) && defined(__APPLE__)
-// #include "browser-mac.h"
-// #endif
-
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-browser", "en-US")
 MODULE_EXPORT const char *obs_module_description(void)
@@ -65,61 +44,12 @@ MODULE_EXPORT const char *obs_module_description(void)
 	return "CEF-based web browser source & panels";
 }
 
-// using namespace std;
-// using namespace json11;
-
-// static thread manager_thread;
-// static bool manager_initialized = false;
-// os_event_t *cef_started_event = nullptr;
-
 #if defined(_WIN32) || defined(__APPLE__)
 static int adapterCount = 0;
 #endif
 static std::wstring deviceId;
 
 bool hwaccel = false;
-
-// /* ========================================================================= */
-
-// #if defined(USE_UI_LOOP) && defined (WIN32)
-// extern MessageObject messageObject;
-// #endif
-
-
-// class BrowserTask : public CefTask {
-// public:
-// 	std::function<void()> task;
-
-// 	inline BrowserTask(std::function<void()> task_) : task(task_) {}
-// 	virtual void Execute() override
-// 	{
-// #ifdef USE_UI_LOOP
-// 		/* you have to put the tasks on the Qt event queue after this
-// 		 * call otherwise the CEF message pump may stop functioning
-// 		 * correctly, it's only supposed to take 10ms max */
-// #ifdef WIN32
-// 		QMetaObject::invokeMethod(&messageObject, "ExecuteTask",
-// 					  Qt::QueuedConnection,
-// 					  Q_ARG(MessageTask, task));
-// #elif __APPLE__
-// 		ExecuteTask(task);
-// #endif
-// #else
-// 		task();
-// #endif
-// 	}
-
-// 	IMPLEMENT_REFCOUNTING(BrowserTask);
-// };
-
-// bool QueueCEFTask(std::function<void()> task)
-// {
-// 	return false;
-// 	// return CefPostTask(TID_UI,
-// 	// 		   CefRefPtr<BrowserTask>(new BrowserTask(task)));
-// }
-
-// /* ========================================================================= */
 
 static const char *default_css = "\
 body { \
@@ -141,7 +71,6 @@ static void browser_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "fps_custom", true);
 #endif
 	obs_data_set_default_bool(settings, "shutdown", false);
-	obs_data_set_default_bool(settings, "is_media_flag", false);
 	obs_data_set_default_bool(settings, "restart_when_active", false);
 	obs_data_set_default_string(settings, "css", default_css);
 
@@ -164,13 +93,6 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 	return true;
 }
 
-static bool is_mediaflag_modified(obs_properties_t *props, obs_property_t *,
-				   obs_data_t *settings)
-{
-	bool enabled = obs_data_get_bool(settings, "is_media_flag");
-	return true;
-}
-
 static bool is_fps_custom(obs_properties_t *props, obs_property_t *,
 			  obs_data_t *settings)
 {
@@ -189,8 +111,6 @@ static obs_properties_t *browser_source_get_properties(void *data)
 
 	obs_properties_set_flags(props, OBS_PROPERTIES_DEFER_UPDATE);
 	obs_property_t *prop = obs_properties_add_bool(props, "is_local_file", obs_module_text("LocalFile"));
-	obs_property_t *is_media_flag_prop = obs_properties_add_bool(props, "is_media_flag", "IsMediaFlag");
-	obs_property_set_visible(is_media_flag_prop, false);
 
 	if (bs && !bs->url.empty()) {
 		const char *slash;
@@ -203,7 +123,6 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	}
 
 	obs_property_set_modified_callback(prop, is_local_file_modified);
-	obs_property_set_modified_callback(is_media_flag_prop, is_mediaflag_modified);
 	obs_properties_add_path(props, "local_file",
 				obs_module_text("LocalFile"), OBS_PATH_FILE,
 				"*.*", path->array);
@@ -287,189 +206,6 @@ static obs_missing_files_t *browser_source_missingfiles(void *data)
 	return files;
 }
 
-// static CefRefPtr<BrowserApp> app;
-
-// static void BrowserInit(obs_data_t *settings_obs)
-// {
-// 	blog(LOG_INFO, "BrowserInit - 0");
-// #if defined(__APPLE__) && defined(USE_UI_LOOP)
-// 	ExecuteTask([settings_obs]() {
-// #endif
-// 		blog(LOG_INFO, "BrowserInit - 1");
-// 		string path = obs_get_module_binary_path(obs_current_module());
-// 		path = path.substr(0, path.find_last_of('/') + 1);
-// 		path += "//obs-browser-page";
-// #ifdef _WIN32
-// 		path += ".exe";
-// 		CefMainArgs args;
-// #else
-// 		/* On non-windows platforms, ie macOS, we'll want to pass thru flags to
-// 		* CEF */
-// 		struct obs_cmdline_args cmdline_args = obs_get_cmdline_args();
-// 		CefMainArgs args(cmdline_args.argc, cmdline_args.argv);
-// 		blog(LOG_INFO, "BrowserInit - 2");
-// #endif
-
-// 	CefSettings settings;
-// 	settings.log_severity = LOGSEVERITY_VERBOSE;
-// 	settings.windowless_rendering_enabled = true;
-// 	settings.no_sandbox = true;
-
-// 	uint32_t obs_ver = obs_get_version();
-// 	uint32_t obs_maj = obs_ver >> 24;
-// 	uint32_t obs_min = (obs_ver >> 16) & 0xFF;
-// 	uint32_t obs_pat = obs_ver & 0xFFFF;
-
-// 	blog(LOG_INFO, "BrowserInit - 3");
-// 	/* This allows servers the ability to determine that browser panels and
-// 	 * browser sources are coming from OBS. */
-// 	std::stringstream prod_ver;
-// 	prod_ver << "Chrome/";
-// 	prod_ver << std::to_string(CHROME_VERSION_MAJOR) << "."
-// 		 << std::to_string(CHROME_VERSION_MINOR) << "."
-// 		 << std::to_string(CHROME_VERSION_BUILD) << "."
-// 		 << std::to_string(CHROME_VERSION_PATCH);
-// 	prod_ver << " OBS/";
-// 	prod_ver << std::to_string(obs_maj) << "." << std::to_string(obs_min)
-// 		 << "." << std::to_string(obs_pat);
-
-// 	CefString(&settings.product_version) = prod_ver.str();
-
-// 	blog(LOG_INFO, "BrowserInit - 4");
-// #ifdef USE_UI_LOOP
-// 	settings.external_message_pump = true;
-// 	settings.multi_threaded_message_loop = false;
-// #endif
-
-// #if !defined(_WIN32) && !defined(__APPLE__)
-// 	// Override locale path from OBS binary path to plugin binary path
-// 	string locales = obs_get_module_binary_path(obs_current_module());
-// 	locales = locales.substr(0, locales.find_last_of('/') + 1);
-// 	locales += "locales";
-// 	BPtr<char> abs_locales = os_get_abs_path_ptr(locales.c_str());
-// 	CefString(&settings.locales_dir_path) = abs_locales;
-// #endif
-
-// #if defined(__APPLE__)
-// 	blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
-
-
-// 	std::string binPath = getExecutablePath();
-// 	binPath = binPath.substr(0, binPath.find_last_of('/'));
-// 	binPath += "/Frameworks/Chromium\ Embedded\ Framework.framework";
-// 	CefString(&settings.framework_dir_path) = binPath;
-// 	blog(LOG_INFO, "binPath: %s", binPath.c_str());
-// #endif
-// 	blog(LOG_INFO, "BrowserInit - 5");
-// 	std::string obs_locale = obs_get_locale();
-// 	std::string accepted_languages;
-// 	if (obs_locale != "en-US") {
-// 		accepted_languages = obs_locale;
-// 		accepted_languages += ",";
-// 		accepted_languages += "en-US,en";
-// 	} else {
-// 		accepted_languages = "en-US,en";
-// 	}
-
-// 	BPtr<char> conf_path = obs_module_config_path("");
-// 	os_mkdir(conf_path);
-// 	BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
-// 	CefString(&settings.locale) = obs_get_locale();
-// 	CefString(&settings.accept_language_list) = accepted_languages;
-// 	CefString(&settings.cache_path) = conf_path_abs;
-// #if !defined(__APPLE__) || defined(BROWSER_LEGACY)
-// 	char *abs_path = os_get_abs_path_ptr(path.c_str());
-// 	CefString(&settings.browser_subprocess_path) = abs_path;
-// 	bfree(abs_path);
-// #endif
-
-// 	bool tex_sharing_avail = false;
-
-// 	blog(LOG_INFO, "BrowserInit - 6");
-// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-// 	if (hwaccel) {
-// 		obs_enter_graphics();
-// 		hwaccel = tex_sharing_avail = gs_shared_texture_available();
-// 		obs_leave_graphics();
-// 	}
-// #endif
-
-// 	blog(LOG_INFO, "BrowserInit - 7");
-// 	app = new BrowserApp(hwaccel);
-
-// #ifdef _WIN32
-// 	CefExecuteProcess(args, app, nullptr);
-// 	/* Massive (but amazing) hack to prevent chromium from modifying our
-// 	 * process tokens and permissions, which caused us problems with winrt,
-// 	 * used with window capture.  Note, the structure internally is just
-// 	 * two pointers normally.  If it causes problems with future versions
-// 	 * we'll just switch back to the static library but I doubt we'll need
-// 	 * to. */
-// 	uintptr_t zeroed_memory_lol[32] = {};
-// 	CefInitialize(args, settings, app, zeroed_memory_lol);
-// #else
-// 	blog(LOG_INFO, "BrowserInit - 8");
-// 	CefInitialize(args, settings, app, nullptr);
-// 	blog(LOG_INFO, "BrowserInit - 9");
-// #endif
-// #if !ENABLE_LOCAL_FILE_URL_SCHEME
-// 		/* Register http://absolute/ scheme handler for older
-// 		* CEF builds which do not support file:// URLs */
-// 		CefRegisterSchemeHandlerFactory("http", "absolute",
-// 						new BrowserSchemeHandlerFactory());
-// #endif
-// 		os_event_signal(cef_started_event);
-// #if defined(__APPLE__) && defined(USE_UI_LOOP)
-// 	});
-// #endif
-// }
-
-// #if defined(USE_UI_LOOP) && defined(__APPLE)
-// extern BrowserCppInt* message;
-// #endif
-
-// static void BrowserShutdown(void)
-// {
-// #ifdef USE_UI_LOOP
-// #ifdef WIN32
-// 	while (messageObject.ExecuteNextBrowserTask())
-// 		;
-// #elif __APPLE__
-// 	while (ExecuteNextBrowserTask())
-// 		;
-// #endif
-// 	CefDoMessageLoopWork();
-// #endif
-// 	CefShutdown();
-// 	app = nullptr;
-// }
-
-// #ifndef USE_UI_LOOP
-// static void BrowserManagerThread(obs_data_t *settings)
-// {
-// 	BrowserInit(settings);
-// 	CefRunMessageLoop();
-// 	BrowserShutdown();
-// }
-// #endif
-
-// extern "C" EXPORT void obs_browser_initialize(obs_data_t* settings)
-// {
-// 	if (!os_atomic_set_bool(&manager_initialized, true)) {
-// #ifdef USE_UI_LOOP
-// 		blog(LOG_INFO, "obs_browser_initialize, using UI_LOOP, call BrowserInit");
-// 		BrowserInit(settings);
-// 		blog(LOG_INFO, "obs_browser_initialize - end");
-// #else
-// 		blog(LOG_INFO, "obs_browser_initialize, NOT using UI_LOOP");
-// 		auto binded_fn = bind(BrowserManagerThread, settings);
-// 		manager_thread = thread(binded_fn);
-// #endif
-// 	} else {
-// 		blog(LOG_INFO, "Manager is already initialized");
-// 	}
-// }
-
 void RegisterBrowserSource()
 {
 	struct obs_source_info info = {};
@@ -490,16 +226,9 @@ void RegisterBrowserSource()
 	info.create = [](obs_data_t *settings, obs_source_t *source) -> void * {
         blog(LOG_INFO, "Browser Source, INIT via info.create , settings %p source %p", settings, source);
 
-        // obs_browser_initialize(settings);
-        // if (manager_initialized && app) {
-        //     bool enabled = obs_data_get_bool(settings, "is_media_flag");
-        //     app->AddFlag(enabled);
-        // }
-
         obs_source_set_audio_mixers(source, 0xFF);
         obs_source_set_monitoring_type(source, OBS_MONITORING_TYPE_MONITOR_ONLY);
         BrowserSource *bs = new BrowserSource(settings, source);
-        // blog(LOG_INFO, "Browserapp pointer: %p", app.get());
         
         return bs;
 	};
@@ -509,10 +238,6 @@ void RegisterBrowserSource()
 	info.missing_files = browser_source_missingfiles;
 	info.update = [](void *data, obs_data_t *settings) {
 		BrowserSource *bs = static_cast<BrowserSource *>(data);
-		// if (app) {
-		// 	bool enabled = obs_data_get_bool(settings, "is_media_flag");
-		// 	app->media_flag = enabled ? 1 : 0;
-		// }
 		bs->Update(settings);
 	};
 	info.get_width = [](void *data) {
@@ -580,93 +305,6 @@ void RegisterBrowserSource()
 
 	obs_register_source(&info);
 }
-
-// /* ========================================================================= */
-
-// extern void DispatchJSEvent(std::string eventName, std::string jsonString,
-// 			    BrowserSource *browser = nullptr);
-
-// #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-// static void handle_obs_frontend_event(enum obs_frontend_event event, void *)
-// {
-// 	switch (event) {
-// 	case OBS_FRONTEND_EVENT_STREAMING_STARTING:
-// 		DispatchJSEvent("obsStreamingStarting", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_STREAMING_STARTED:
-// 		DispatchJSEvent("obsStreamingStarted", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
-// 		DispatchJSEvent("obsStreamingStopping", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
-// 		DispatchJSEvent("obsStreamingStopped", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_STARTING:
-// 		DispatchJSEvent("obsRecordingStarting", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
-// 		DispatchJSEvent("obsRecordingStarted", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_PAUSED:
-// 		DispatchJSEvent("obsRecordingPaused", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_UNPAUSED:
-// 		DispatchJSEvent("obsRecordingUnpaused", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_STOPPING:
-// 		DispatchJSEvent("obsRecordingStopping", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
-// 		DispatchJSEvent("obsRecordingStopped", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_STARTING:
-// 		DispatchJSEvent("obsReplaybufferStarting", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_STARTED:
-// 		DispatchJSEvent("obsReplaybufferStarted", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_SAVED:
-// 		DispatchJSEvent("obsReplaybufferSaved", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_STOPPING:
-// 		DispatchJSEvent("obsReplaybufferStopping", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_STOPPED:
-// 		DispatchJSEvent("obsReplaybufferStopped", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_VIRTUALCAM_STARTED:
-// 		DispatchJSEvent("obsVirtualcamStarted", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_VIRTUALCAM_STOPPED:
-// 		DispatchJSEvent("obsVirtualcamStopped", "");
-// 		break;
-// 	case OBS_FRONTEND_EVENT_SCENE_CHANGED: {
-// 		OBSSource source = obs_frontend_get_current_scene();
-// 		obs_source_release(source);
-
-// 		if (!source)
-// 			break;
-
-// 		const char *name = obs_source_get_name(source);
-// 		if (!name)
-// 			break;
-
-// 		Json json = Json::object{
-// 			{"name", name},
-// 			{"width", (int)obs_source_get_width(source)},
-// 			{"height", (int)obs_source_get_height(source)}};
-
-// 		DispatchJSEvent("obsSceneChanged", json.dump());
-// 		break;
-// 	}
-// 	case OBS_FRONTEND_EVENT_EXIT:
-// 		DispatchJSEvent("obsExit", "");
-// 		break;
-// 	default:;
-// 	}
-// }
-// #endif
 
 #ifdef _WIN32
 static inline void EnumAdapterCount()
@@ -815,41 +453,6 @@ bool obs_module_load(void)
 
 	RegisterBrowserSource();
 	bc->IntializeBrowserCEF();
-
-// 	blog(LOG_INFO, "[obs-browser]: Version %s", OBS_BROWSER_VERSION_STRING);
-
-// #if defined(USE_UI_LOOP) && defined(WIN32)
-// 	qRegisterMetaType<MessageTask>("MessageTask");
-// #endif
-
-// 	os_event_init(&cef_started_event, OS_EVENT_TYPE_MANUAL);
-
-// #ifdef _WIN32
-// 	/* CefEnableHighDPISupport doesn't do anything on OS other than Windows. Would also crash macOS at this point as CEF is not directly linked */
-// 	CefEnableHighDPISupport();
-// 	EnumAdapterCount();
-// #else
-// #if defined(__APPLE__) && !defined(BROWSER_LEGACY)
-// 	/* Load CEF at runtime as required on macOS */
-// 	CefScopedLibraryLoader library_loader;
-// 	if (!library_loader.LoadInMain())
-// 		return false;
-// #endif
-// #endif
-// 	RegisterBrowserSource();
-
-// #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-// 	obs_frontend_add_event_callback(handle_obs_frontend_event, nullptr);
-// #endif
-
-
-
-
-// #if defined(__APPLE__) && CHROME_VERSION_BUILD < 4183
-// 	// Make sure CEF malloc hijacking happens early in the process
-// 	if(isHighThanBigSur())
-// 		obs_browser_initialize(nullptr);
-// #endif
 
 	return true;
 }

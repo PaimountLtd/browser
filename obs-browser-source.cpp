@@ -311,9 +311,6 @@ void BrowserSource::Refresh()
 
 void BrowserSource::RenderSharedTexture(void* shared_handle)
 {
-	// if (!reset_frame)
-	// 	return;
-
 	if (shared_handle && this->last_handle != shared_handle) {
 		obs_enter_graphics();
 
@@ -326,8 +323,6 @@ void BrowserSource::RenderSharedTexture(void* shared_handle)
 		obs_leave_graphics();
 		last_handle = shared_handle;
 	}
-
-	// reset_frame = false;
 }
 
 inline void BrowserSource::SignalBeginFrame()
@@ -341,23 +336,6 @@ inline void BrowserSource::SignalBeginFrame()
 	} else {
 		blog(LOG_INFO, "frame not ready to be rendered");
 	}
-	// if (reset_frame) {
-	// 	void* shared_handle = bc->SignalBeginFrame((uint64_t) &source);
-	// 	if (shared_handle && this->last_handle != shared_handle) {
-	// 		obs_enter_graphics();
-
-	// 		gs_texture_destroy(this->texture);
-	// 		this->texture = nullptr;
-
-	// 		this->texture = gs_texture_open_shared(
-	// 			(uint32_t)(uintptr_t)shared_handle);
-
-	// 		obs_leave_graphics();
-	// 		last_handle = shared_handle;
-	// 	}
-
-	// 	reset_frame = false;
-	// }
 }
 #endif
 #endif
@@ -544,34 +522,3 @@ static void ExecuteOnBrowser(BrowserFunc func, BrowserSource *bs)
 		bsw->ExecuteOnBrowser(func, true);
 	}
 }
-
-// static void ExecuteOnAllBrowsers(BrowserFunc func)
-// {
-// 	lock_guard<mutex> lock(browser_list_mutex);
-
-// 	BrowserSource *bs = first_browser;
-// 	while (bs) {
-// 		BrowserSource *bsw = reinterpret_cast<BrowserSource *>(bs);
-// 		bsw->ExecuteOnBrowser(func, true);
-// 		bs = bs->next;
-// 	}
-// }
-
-// void DispatchJSEvent(std::string eventName, std::string jsonString,
-// 		     BrowserSource *browser)
-// {
-// 	const auto jsEvent = [=](CefRefPtr<CefBrowser> cefBrowser) {
-// 		CefRefPtr<CefProcessMessage> msg =
-// 			CefProcessMessage::Create("DispatchJSEvent");
-// 		CefRefPtr<CefListValue> args = msg->GetArgumentList();
-
-// 		args->SetString(0, eventName);
-// 		args->SetString(1, jsonString);
-// 		SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg);
-// 	};
-
-// 	if (!browser)
-// 		ExecuteOnAllBrowsers(jsEvent);
-// 	else
-// 		ExecuteOnBrowser(jsEvent, browser);
-// }
