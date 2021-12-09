@@ -713,6 +713,12 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		CallbackServerContext* context,
 		const IdRequest* request,
 		RequestPaintReply* reply) override {
+		ExecuteOnBrowser(
+			[](CefRefPtr<CefBrowser> cefBrowser) {
+				cefBrowser->GetHost()->SendExternalBeginFrame();
+			},
+			browserClients[request->id()]->cefBrowser, true);
+
 		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 		if (!browserClients[request->id()] ||
 		    browserClients[request->id()]->OnPaint_requested) {

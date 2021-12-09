@@ -142,8 +142,7 @@ struct BrowserSource {
 	inline void SignalBeginFrame();
 	void RenderSharedTexture(void* shared_handle);
 #endif
-	void RequestPaint();
 	void RenderFrame(int width, int height,
-	::google::protobuf::RepeatedPtrField<std::string>* buffer);
+		::google::protobuf::RepeatedPtrField<std::string>* buffer);
 };
 #endif

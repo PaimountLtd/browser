@@ -333,7 +333,10 @@ void BrowserSource::RenderSharedTexture(void* shared_handle)
 inline void BrowserSource::SignalBeginFrame()
 {
 	if (reset_frame) {
-		bc->SignalBeginFrame(this);
+		if (hwaccel)
+			bc->SignalBeginFrame(this);
+		else
+			bc->RequestPaint(this);
 		reset_frame = false;
 	} else {
 		blog(LOG_INFO, "frame not ready to be rendered");
@@ -386,11 +389,6 @@ void BrowserSource::RenderFrame(int width, int height,
 				     width * 4, false);
 		obs_leave_graphics();
 	}
-}
-
-void BrowserSource::RequestPaint()
-{
-	bc->RequestPaint(this);
 }
 
 void BrowserSource::Update(obs_data_t *settings)
@@ -534,8 +532,6 @@ void BrowserSource::Render()
 
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	SignalBeginFrame();
-#else
-	RequestPaint();
 #endif
 }
 
