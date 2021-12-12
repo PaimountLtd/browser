@@ -138,6 +138,8 @@ void BrowserApp::OnContextCreated(CefRefPtr<CefBrowser> browser,
 	if (browserVis.find(id) != browserVis.end()) {
 		SetDocumentVisibility(browser, browserVis[id]);
 	}
+#else
+	UNUSED_PARAMETER(browser);
 #endif
 }
 
