@@ -216,7 +216,7 @@ static obs_properties_t *browser_source_get_properties(void *data)
 #endif
 
 	obs_properties_add_bool(props, "reroute_audio",
-				obs_module_text("RerouteAudio"));
+				obs_module_text("RerouteAudioStreamlabs"));
 
 	obs_properties_add_int(props, "fps", obs_module_text("FPS"), 1, 60, 1);
 	obs_property_t *p = obs_properties_add_text(
