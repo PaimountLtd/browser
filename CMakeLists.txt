@@ -4,7 +4,7 @@ project(obs-browser)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
+#include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
@@ -52,6 +52,11 @@ set(obs-browser_LIBRARIES
 	libobs
 #	obs-frontend-api
 	)
+
+if(WIN32)
+list(APPEND obs-browser_LIBRARIES
+	Kernel32)
+endif()
 
 list(APPEND obs-browser_LIBRARIES
 	${CEF_LIBRARIES})

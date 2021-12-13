@@ -45,6 +45,8 @@
 
 using namespace json11;
 
+std::map<std::string, std::string> BrowserApp::parameters;
+
 CefRefPtr<CefRenderProcessHandler> BrowserApp::GetRenderProcessHandler()
 {
 	return this;
@@ -69,21 +71,31 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 #endif
 }
 
-void BrowserApp::AddFlag(bool flag) 
+// Returns if the browser needs to be restarted or not. Returning
+// true means the browser should be restarted.
+bool BrowserApp::TryUpdateCommandLineParameters(
+	std::map<std::string, std::string> params)
 {
-    std::lock_guard<std::mutex> guard(flag_mutex);
-    this->media_flags.push(flag);
+	parameters = params;
+	return true;
+}
+
+void BrowserApp::AddFlag(bool flag)
+{
+	std::lock_guard<std::mutex> guard(flag_mutex);
+	this->media_flags.push(flag);
 }
 
 void BrowserApp::OnBeforeChildProcessLaunch(
 	CefRefPtr<CefCommandLine> command_line)
 {
+	// There are two processes in CEF V1 (the one we're using). There's
+	// a server and a child process. The server is launched once and the
+	// child process is launched for new windows/tabs
 #ifdef _WIN32
 	std::string pid = std::to_string(GetCurrentProcessId());
 	command_line->AppendSwitchWithValue("parent_pid", pid);
-#else
 #endif
-
     std::lock_guard<std::mutex> guard(flag_mutex);
     if (this->media_flag != -1) {
         if (this->media_flag) {
@@ -98,10 +110,19 @@ void BrowserApp::OnBeforeChildProcessLaunch(
             command_line->AppendSwitchWithValue("enable-media-stream", "1");
         }
     }
+
+	for (auto&& p : parameters) {
+		if (p.first == "")
+			continue;
+		if (p.second == "")
+			command_line->AppendSwitch(p.first);
+		else
+			command_line->AppendSwitchWithValue(p.first, p.second);
+	}
 }
 
 void BrowserApp::OnBeforeCommandLineProcessing(
-	const CefString &, CefRefPtr<CefCommandLine> command_line)
+	const CefString & processType, CefRefPtr<CefCommandLine> command_line)
 {
 	if (!shared_texture_available) {
 		bool enableGPU = command_line->HasSwitch("enable-gpu");
@@ -139,6 +160,16 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 			if (flag) {
 				command_line->AppendSwitchWithValue("enable-media-stream", "1");
 			}
+	}
+
+	for (auto&& p : parameters) {
+		if (p.first == "")
+			continue;
+		if (p.second == "")
+			command_line->AppendSwitch(p.first);
+		else
+			command_line->AppendSwitchWithValue(p.first, p.second);
+
 	}
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");

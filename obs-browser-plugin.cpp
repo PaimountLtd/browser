@@ -120,6 +120,8 @@ margin: 0px auto; \
 overflow: hidden; \
 }";
 
+static const char *default_browser_options = "";
+
 static void browser_source_get_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_string(settings, "url",
@@ -138,6 +140,7 @@ static void browser_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "webpage_control_level",
 				 (int)DEFAULT_CONTROL_LEVEL);
 	obs_data_set_default_string(settings, "css", default_css);
+	obs_data_set_default_string(settings, "browser_options", default_browser_options);
 
 #ifdef __APPLE__
 	obs_data_set_default_bool(settings, "reroute_audio", true);
@@ -158,10 +161,10 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 	return true;
 }
 
-static bool is_mediaflag_modified(obs_properties_t *props, obs_property_t *,
-				   obs_data_t *settings)
+static bool on_browser_media_flag_modified(obs_properties_t* props, obs_property_t* property, obs_data_t* settings)
 {
-	bool enabled = obs_data_get_bool(settings, "is_media_flag");
+	// TODO: This is a command line option and will have to change the command line properties.
+	obs_properties_t *new_flags = props;
 	return true;
 }
 
@@ -197,7 +200,8 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	}
 
 	obs_property_set_modified_callback(prop, is_local_file_modified);
-	obs_property_set_modified_callback(is_media_flag_prop, is_mediaflag_modified);
+	obs_property_set_modified_callback(is_media_flag_prop, on_browser_media_flag_modified);
+
 	obs_properties_add_path(props, "local_file",
 				obs_module_text("LocalFile"), OBS_PATH_FILE,
 				"*.*", path->array);
@@ -222,6 +226,12 @@ static obs_properties_t *browser_source_get_properties(void *data)
 	obs_property_t *p = obs_properties_add_text(
 		props, "css", obs_module_text("CSS"), OBS_TEXT_MULTILINE);
 	obs_property_text_set_monospace(p, true);
+
+	obs_property_t *browser_options_prop =
+		obs_properties_add_text(props, "browser_options",
+			obs_module_text("BrowserOptions"), OBS_TEXT_DEFAULT);
+	obs_property_set_visible(browser_options_prop, false);
+
 	obs_properties_add_bool(props, "shutdown",
 				obs_module_text("ShutdownSourceNotVisible"));
 	obs_properties_add_bool(props, "restart_when_active",
@@ -310,11 +320,11 @@ static CefRefPtr<BrowserApp> app;
 
 static void BrowserInit(obs_data_t *settings_obs)
 {
-	blog(LOG_INFO, "BrowserInit - 0");
+	blog(LOG_INFO, "BrowserInit - 0 Starting Browser Initialization");
 #if defined(__APPLE__) && defined(USE_UI_LOOP)
 	ExecuteTask([settings_obs]() {
 #endif
-		blog(LOG_INFO, "BrowserInit - 1");
+		blog(LOG_INFO, "BrowserInit - 1 Finding browser executable");
 		string path = obs_get_module_binary_path(obs_current_module());
 		path = path.substr(0, path.find_last_of('/') + 1);
 		path += "//obs-browser-page";
@@ -326,8 +336,8 @@ static void BrowserInit(obs_data_t *settings_obs)
 		* CEF */
 		struct obs_cmdline_args cmdline_args = obs_get_cmdline_args();
 		CefMainArgs args(cmdline_args.argc, cmdline_args.argv);
-		blog(LOG_INFO, "BrowserInit - 2");
 #endif
+		blog(LOG_INFO, "BrowserInit - 2 - (Mac Only), pass through command line parameters from OBS onto Browser");
 
 	CefSettings settings;
 	settings.log_severity = LOGSEVERITY_VERBOSE;
@@ -339,7 +349,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 	uint32_t obs_min = (obs_ver >> 16) & 0xFF;
 	uint32_t obs_pat = obs_ver & 0xFFFF;
 
-	blog(LOG_INFO, "BrowserInit - 3");
+	blog(LOG_INFO, "BrowserInit - 3 - Setting browser setttings (no window, no sandboxing)");
 	/* This allows servers the ability to determine that browser panels and
 	 * browser sources are coming from OBS. */
 	std::stringstream prod_ver;
@@ -358,8 +368,9 @@ static void BrowserInit(obs_data_t *settings_obs)
 	CefString(&settings.product_version) = prod_ver.str();
 #endif
 
-	blog(LOG_INFO, "BrowserInit - 4");
+	blog(LOG_INFO, "BrowserInit - 4 - Telling browser about OBS version number");
 #ifdef USE_UI_LOOP
+	blog(LOG_WARN, "BrowserInit - Using external UI message pump. Note, this avoids race conditions at the cost of performance.");
 	settings.external_message_pump = true;
 	settings.multi_threaded_message_loop = false;
 #endif
@@ -376,14 +387,13 @@ static void BrowserInit(obs_data_t *settings_obs)
 #if defined(__APPLE__)
 	blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
 
-
 	std::string binPath = getExecutablePath();
 	binPath = binPath.substr(0, binPath.find_last_of('/'));
 	binPath += "/Frameworks/Chromium\ Embedded\ Framework.framework";
 	CefString(&settings.framework_dir_path) = binPath;
 	blog(LOG_INFO, "binPath: %s", binPath.c_str());
 #endif
-	blog(LOG_INFO, "BrowserInit - 5");
+	blog(LOG_INFO, "BrowserInit - 5 - Informing browser about it's framework language modules (OS specific)");
 	std::string obs_locale = obs_get_locale();
 	std::string accepted_languages;
 	if (obs_locale != "en-US") {
@@ -408,7 +418,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 
 	bool tex_sharing_avail = false;
 
-	blog(LOG_INFO, "BrowserInit - 6");
+	blog(LOG_INFO, "BrowserInit - 6 - Setting Languge of Browser");
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 	if (hwaccel) {
 		obs_enter_graphics();
@@ -417,10 +427,11 @@ static void BrowserInit(obs_data_t *settings_obs)
 	}
 #endif
 
-	blog(LOG_INFO, "BrowserInit - 7");
-	app = new BrowserApp(hwaccel);
+	blog(LOG_INFO, "BrowserInit - 7 - Creating BrowserApp with hardware acceleration to %s", hwaccel ? "true" : "false");
+	app = new BrowserApp(args, hwaccel);
 
 #ifdef _WIN32
+	blog(LOG_INFO, "BrowserInit - 8 - Setting hardware acceleration to %s", hwaccel ? "true" : "false");
 	CefExecuteProcess(args, app, nullptr);
 	/* Massive (but amazing) hack to prevent chromium from modifying our
 	 * process tokens and permissions, which caused us problems with winrt,
@@ -428,19 +439,23 @@ static void BrowserInit(obs_data_t *settings_obs)
 	 * two pointers normally.  If it causes problems with future versions
 	 * we'll just switch back to the static library but I doubt we'll need
 	 * to. */
+	blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with sandbox hack (winrt workargound)");
 	uintptr_t zeroed_memory_lol[32] = {};
 	CefInitialize(args, settings, app, zeroed_memory_lol);
 #else
-	blog(LOG_INFO, "BrowserInit - 8");
+	blog(LOG_INFO, "BrowserInit - 9 - Initializing browser with no sandbox information");
 	CefInitialize(args, settings, app, nullptr);
-	blog(LOG_INFO, "BrowserInit - 9");
+	blog(LOG_INFO, "BrowserInit - 10 - Initilization complete");
 #endif
+	blog(LOG_INFO, "BrowserInit - 11 - Setting custom URL handler to %s (local file workaround for some versions)", ENABLE_LOCAL_FILE_URL_SCHEME ? "true" : "false");
 #if !ENABLE_LOCAL_FILE_URL_SCHEME
+		
 		/* Register http://absolute/ scheme handler for older
 		* CEF builds which do not support file:// URLs */
 		CefRegisterSchemeHandlerFactory("http", "absolute",
 						new BrowserSchemeHandlerFactory());
 #endif
+		blog(LOG_INFO, "BrowserInit - 12 - Signaling browser is ready to OBS");
 		os_event_signal(cef_started_event);
 #if defined(__APPLE__) && defined(USE_UI_LOOP)
 	});
@@ -511,7 +526,7 @@ void RegisterBrowserSource()
 	info.get_name = [](void *) { return obs_module_text("BrowserSource"); };
 	blog(LOG_INFO, "RegisterBrowserSource");
 	info.create = [](obs_data_t *settings, obs_source_t *source) -> void * {
-        blog(LOG_INFO, "Browser Source, INIT via info.create , settings %p source %p", settings, source);
+	blog(LOG_INFO, "Browser Source, INIT via info.create , settings %p source %p", settings, source);
 
         obs_browser_initialize(settings);
         if (manager_initialized && app) {
@@ -801,7 +816,6 @@ bool obs_module_load(void)
 #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
 	obs_frontend_add_event_callback(handle_obs_frontend_event, nullptr);
 #endif
-
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 	obs_data_t *private_data = obs_get_private_data();

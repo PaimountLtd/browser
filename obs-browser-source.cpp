@@ -16,7 +16,10 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include "obs.h"
+#include "obs-data.h"
 #include "obs-browser-source.hpp"
+#include "browser-app.hpp"
 #include "browser-client.hpp"
 #include "browser-scheme.hpp"
 #include "wide-string.hpp"
@@ -26,6 +29,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <map>
 
 #ifdef __linux__
 #include "linux-keyboard-helpers.hpp"
@@ -44,7 +48,12 @@ using namespace json11;
 extern bool QueueCEFTask(std::function<void()> task);
 
 static mutex browser_list_mutex;
+static mutex browser_restarting;
+
 static BrowserSource *first_browser = nullptr;
+
+// This is to prevent the browsers from starting while shutting down and other potentially bad things.
+std::map<std::string, std::string> GetNewBrowserOptions(std::string options);
 
 static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
 {
@@ -142,8 +151,19 @@ void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
 	}
 }
 
-bool BrowserSource::CreateBrowser()
+bool BrowserSource::CreateBrowser(obs_data_t* settings)
 {
+	// Lock_guard takes care of try catch exceptions and other potentional deadlock conditions.
+	// This is scoped to this function only and will not attempt tp create the browser twice
+	const std::lock_guard<std::mutex> lock (browser_list_mutex);
+
+	if (settings != NULL) {
+		char* options = (char*)obs_data_get_string(settings, "browser_options");
+		this->additionalCommandLineParameters = GetNewBrowserOptions(options);
+	}
+	
+	BrowserApp::TryUpdateCommandLineParameters(this->additionalCommandLineParameters);
+
 #ifdef WIN32
 	return QueueCEFTask([this]() {
 #endif
@@ -175,7 +195,6 @@ bool BrowserSource::CreateBrowser()
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 		windowInfo.shared_texture_enabled = hwaccel;
 #endif
-
 		CefBrowserSettings cefBrowserSettings;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
@@ -229,10 +248,30 @@ bool BrowserSource::CreateBrowser()
 #endif
 }
 
+void BrowserSource::RestartBrowser()
+{
+	blog(LOG_INFO, "Browser is restarting");
+
+	const std::lock_guard<std::mutex> restartGuard(browser_restarting);
+	{
+		// Mutext here to protect if we're in a bad state already
+		const std::lock_guard<std::mutex> lock(browser_list_mutex);
+		if (cefBrowser == nullptr)
+			return;
+	}
+
+	obs_data_t* settings = obs_source_get_settings(this->source);
+
+	DestroyBrowser();
+	CreateBrowser(settings);
+}
+
 void BrowserSource::DestroyBrowser(bool async)
 {
 	ExecuteOnBrowser(
 		[](CefRefPtr<CefBrowser> cefBrowser) {
+			const std::lock_guard<std::mutex> lock(browser_list_mutex);
+
 			CefRefPtr<CefClient> client =
 				cefBrowser->GetHost()->GetClient();
 			BrowserClient *bc =
@@ -477,6 +516,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		ControlLevel n_webpage_control_level;
 		std::string n_url;
 		std::string n_css;
+		std::string n_browser_options;
 
 		n_is_media_flag = obs_data_get_bool(settings, "is_media_flag");
 		n_is_local = obs_data_get_bool(settings, "is_local_file");
@@ -487,6 +527,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		n_shutdown = obs_data_get_bool(settings, "shutdown");
 		n_restart = obs_data_get_bool(settings, "restart_when_active");
 		n_css = obs_data_get_string(settings, "css");
+		n_browser_options = obs_data_get_string(settings, "browser_options");
 		n_url = obs_data_get_string(settings,
 					    n_is_local ? "local_file" : "url");
 		n_reroute = obs_data_get_bool(settings, "reroute_audio");
@@ -536,7 +577,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		if (n_is_local == is_local && n_width == width &&
 		    n_height == height && n_fps_custom == fps_custom &&
 		    n_fps == fps && n_shutdown == shutdown_on_invisible &&
-		    n_restart == restart && n_css == css && n_url == url &&
+		    n_restart == restart && n_css == css && n_browser_options == browser_options && n_url == url &&
 		    n_reroute == reroute_audio && (n_is_media_flag == is_media_flag ||
 		    n_webpage_control_level == webpage_control_level)) {
 			return;
@@ -553,6 +594,7 @@ void BrowserSource::Update(obs_data_t *settings)
 		webpage_control_level = n_webpage_control_level;
 		restart = n_restart;
 		css = n_css;
+		browser_options = n_browser_options;
 		url = n_url;
 
 		obs_source_set_audio_active(source, reroute_audio);
@@ -571,8 +613,16 @@ void BrowserSource::Update(obs_data_t *settings)
 
 void BrowserSource::Tick()
 {
-	if (create_browser && CreateBrowser())
+	obs_data_t* settings = NULL;
+	if(this->source != NULL) {
+		// copy the settings we we're using before. Note: these may have
+		// changed and that's why we're restarting the client.
+		settings = obs_source_get_settings(this->source);
+	}
+
+	if (create_browser && CreateBrowser(settings))
 		create_browser = false;
+
 #if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	if (!fps_custom)
 		reset_frame = true;
@@ -675,11 +725,72 @@ void DispatchJSEvent(std::string eventName, std::string jsonString,
 
 		args->SetString(0, eventName);
 		args->SetString(1, jsonString);
-		SendBrowserProcessMessage(cefBrowser, PID_RENDERER, msg);
+		SendBrowserProcessMessage(cefBrowser, PID_RENDERER,msg);
 	};
 
 	if (!browser)
 		ExecuteOnAllBrowsers(jsEvent);
 	else
 		ExecuteOnBrowser(jsEvent, browser);
+}
+
+std::map<std::string, std::string> GetNewBrowserOptions(std::string token_string)
+{
+	// This assums pretty well formed parameters - should probably do some error checking too
+
+	std::list<std::string> parameterValueList;
+	std::map<std::string, std::string> parameters;
+
+	// Break everything up into --token=value or --token
+	size_t pos = 0;
+	std::string token;
+	while ((pos = token_string.find(' ')) != std::string::npos) {
+		if (pos != 0) {
+			token = token_string.substr(0, pos);
+			parameterValueList.push_back(token);
+		}
+		token_string.erase(0, pos + 1);
+	}
+	if (token_string.length() > 0)
+		parameterValueList.push_back(token_string);
+
+	// Clean up the values a bit so we don't have the -- because CEF doesn't want it
+	for (auto&& tv : parameterValueList) {
+		size_t paramStartPos = 0;
+
+		if (tv._Starts_with("--")) {
+			paramStartPos = 2;
+		} else {
+			continue;
+		}
+
+		string paramString;
+		string valueString;
+
+		size_t paramEndPos = tv.find_first_of('=');
+		if (paramEndPos == std::string::npos) {
+			paramEndPos = tv.length() - paramStartPos;
+			paramString = tv.substr(paramStartPos, paramEndPos);
+
+			if (paramString.length() == 0)
+				continue;
+
+			parameters[paramString] = "";
+			blog(LOG_INFO, "Adding CEF parameter %s", paramString.c_str());
+		} else {
+			size_t paramLen = paramEndPos - paramStartPos;
+			paramString = tv.substr(paramStartPos, paramLen);
+
+			paramLen = tv.length() - paramEndPos - 1;
+			valueString = tv.substr(paramEndPos + 1, paramLen);
+
+			if (paramString.length() == 0)
+				continue;
+
+			parameters[paramString] = valueString;
+			blog(LOG_INFO, "Adding CEF parameter %s = %s", paramString.c_str(), valueString.c_str());
+		}
+	}
+
+	return parameters;
 }

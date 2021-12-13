@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 #endif
 	CefMainArgs mainArgs(argc, argv);
 #endif
-	CefRefPtr<BrowserApp> mainApp(new BrowserApp());
+	CefRefPtr<BrowserApp> mainApp(new BrowserApp(mainArgs));
 
 	int ret = CefExecuteProcess(mainArgs, mainApp.get(), NULL);
 

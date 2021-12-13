@@ -63,6 +63,7 @@ struct BrowserSource {
 
 	std::string url;
 	std::string css;
+	std::string browser_options;
 	gs_texture_t *texture = nullptr;
 	gs_texture_t *extra_texture = nullptr;
 	int width = 0;
@@ -97,9 +98,10 @@ struct BrowserSource {
 
 	/* ---------------------------- */
 
-	bool CreateBrowser();
+	bool CreateBrowser(obs_data_t* settings);
 	void DestroyBrowser(bool async = false);
 	void ExecuteOnBrowser(BrowserFunc func, bool async = false);
+	void RestartBrowser();
 
 	/* ---------------------------- */
 
@@ -116,6 +118,7 @@ struct BrowserSource {
 		      size_t channels, size_t sample_rate);
 	std::mutex audio_sources_mutex;
 	std::vector<obs_source_t *> audio_sources;
+	std::map<std::string, std::string> additionalCommandLineParameters;
 	std::unordered_map<int, AudioStream> audio_streams;
 #endif
 	void SendMouseClick(const struct obs_mouse_event *event, int32_t type,
