@@ -122,6 +122,7 @@ static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
 }
 #endif
 
+#if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
 void BrowserSource::OnAudioStreamStarted(int id,
 					 int channel_layout,
 					 int sample_rate)
@@ -191,6 +192,29 @@ void BrowserSource::OnAudioStreamStopped(int id)
 	}
 	audio_streams.erase(pair);
 }
+#endif
+
+#if CHROME_VERSION_BUILD >= 4103
+void BrowserSource::OnAudioStreamStarted(int id,
+					 int channel_layout,
+					 int sample_rate)
+{
+
+}
+
+void BrowserSource::OnAudioStreamPacket(
+	::google::protobuf::RepeatedPtrField<string>* data,
+	int32_t frames, int64_t pts)
+{
+
+}
+
+void BrowserSource::OnAudioStreamStopped(int id)
+{
+
+}
+#endif
+
 
 bool BrowserSource::CreateBrowser()
 {

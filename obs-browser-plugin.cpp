@@ -27,15 +27,19 @@
 #include "obs-browser-source.hpp"
 
 #include <string>
-#include <windows.h>
 
 #ifdef _WIN32
+#include <windows.h>
 #include <util/windows/ComPtr.hpp>
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <d3d11.h>
 #include <winnt.h>
+#else
+#include <spawn.h>
+extern char **environ;
 #endif
+
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-browser", "en-US")
@@ -420,6 +424,7 @@ bool obs_module_load(void)
 
 	const std::wstring utfProgram(from_utf8_to_utf16_wide(path.c_str()));
 
+#ifdef WIN32
 	STARTUPINFO info={sizeof(info)};
 	PROCESS_INFORMATION processInfo;
 
@@ -436,6 +441,10 @@ bool obs_module_load(void)
 	    &processInfo);
 
 	if (!success) return false;
+#else
+	pid_t pid;
+	int success = posix_spawnp(&pid, path.c_str(), NULL, NULL, NULL, environ);
+#endif
 
 	std::string target_str = "localhost:50051";
 	bc = new BrowserGRPCClient(

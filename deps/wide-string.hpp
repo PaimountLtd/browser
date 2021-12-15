@@ -19,5 +19,8 @@
 
 #include <string>
 
+#define UTF8_IGNORE_ERROR 0x01
+#define UTF8_SKIP_BOM 0x02
+
 extern std::wstring to_wide(const char *utf8);
 extern std::wstring to_wide(const std::string &utf8);

@@ -120,6 +120,8 @@ target_link_libraries(obs-browser-server
   ${CEF_LIBRARIES}
 )
 
+target_compile_features(obs-browser-server PRIVATE cxx_std_17)
+
 # ----------------------------------------------------------------------------
 
 set(obs-browser_LIBRARIES
@@ -274,7 +276,7 @@ if (APPLE AND NOT BROWSER_LEGACY)
 		)
 
 	set(CEF_HELPER_TARGET "obs-browser-page")
-	set(CEF_HELPER_OUTPUT_NAME "obs64 Helper")
+	set(CEF_HELPER_OUTPUT_NAME "obs-browser-server Helper")
 	set(CEF_HELPER_APP_SUFFIXES
 		"::"
 		" (GPU):_gpu:.gpu"

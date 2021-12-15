@@ -183,11 +183,11 @@ void BrowserClient::OnAudioStreamStarted(CefRefPtr<CefBrowser> browser,
 					 const CefAudioParameters &params_,
 					 int channels_)
 {
-	UNUSED_PARAMETER(browser);
-	channels = channels_;
-	channel_layout = (ChannelLayout)params_.channel_layout;
-	sample_rate = params_.sample_rate;
-	frames_per_buffer = params_.frames_per_buffer;
+	// UNUSED_PARAMETER(browser);
+	// channels = channels_;
+	// channel_layout = (ChannelLayout)params_.channel_layout;
+	// sample_rate = params_.sample_rate;
+	// frames_per_buffer = params_.frames_per_buffer;
 }
 
 void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser,
@@ -214,20 +214,20 @@ void BrowserClient::OnAudioStreamPacket(CefRefPtr<CefBrowser> browser,
 
 void BrowserClient::OnAudioStreamStopped(CefRefPtr<CefBrowser> browser)
 {
-	UNUSED_PARAMETER(browser);
-	if (!bs) {
-		return;
-	}
+	// UNUSED_PARAMETER(browser);
+	// if (!bs) {
+	// 	return;
+	// }
 }
 
 void BrowserClient::OnAudioStreamError(CefRefPtr<CefBrowser> browser,
 				       const CefString &message)
 {
-	UNUSED_PARAMETER(browser);
-	UNUSED_PARAMETER(message);
-	if (!bs) {
-		return;
-	}
+	// UNUSED_PARAMETER(browser);
+	// UNUSED_PARAMETER(message);
+	// if (!bs) {
+	// 	return;
+	// }
 }
 
 static CefAudioHandler::ChannelLayout Convert2CEFSpeakerLayout(int channels)

@@ -235,6 +235,7 @@ void BrowserGRPCClient::OnAudioStreamStarted(BrowserSource* bs) {
                             });
 }
 
+#if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
 void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
   OnAudioStreamPacketRequest* request = new OnAudioStreamPacketRequest();
   request->set_id((uint64_t) &bs->source);
@@ -256,6 +257,31 @@ void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
                                 }
                             });
 }
+#endif
+
+#if CHROME_VERSION_BUILD >= 4103
+void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
+  // OnAudioStreamPacketRequest* request = new OnAudioStreamPacketRequest();
+  // request->set_id((uint64_t) &bs->source);
+  // if (bs->reroute_audio)
+  //   request->set_channels(bs->audio_streams[bs->id].channels);
+  // OnAudioStreamPacketReply* reply = new OnAudioStreamPacketReply();
+  // ClientContext* context = new ClientContext();
+
+  // stub_->async()->OnAudioStreamPacket(context, request, reply,
+  //                            [bs, reply, this](Status s) {
+  //                              std::lock_guard<std::mutex> lock(mtx);
+  //                               if (active) {
+  //                                 OnAudioStreamPacket(bs);
+  //                                 bs->OnAudioStreamPacket(
+  //                                   reply->mutable_data(),
+  //                                   reply->frames(),
+  //                                   reply->pts()
+  //                                 );
+  //                               }
+  //                           });
+}
+#endif
 
 void BrowserGRPCClient::OnAudioStreamStopped(BrowserSource* bs) {
   IdRequest* request = new IdRequest();

@@ -71,7 +71,7 @@ static void BrowserInit(
 	/* Load CEF at runtime as required on macOS */
 	CefScopedLibraryLoader library_loader;
 	if (!library_loader.LoadInMain())
-		return false;
+		return;
 #endif
 #endif
 
@@ -439,8 +439,11 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		NoReply* reply) override {
 		if (manager_thread.joinable()) {
 			while (!QueueCEFTask([]() { CefQuitMessageLoop(); }))
+#ifdef _WIN32
 				Sleep(5);
-
+#else
+				sleep(5);
+#endif
 			manager_thread.join();
 		}
 		
