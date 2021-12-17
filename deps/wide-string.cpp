@@ -18,6 +18,11 @@
 #include "wide-string.hpp"
 #include <string.h>
 
+#ifdef _WIN32
+#include <wchar.h>
+#include <windows.h>
+#endif
+
 using namespace std;
 
 #ifdef _WIN32
