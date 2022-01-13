@@ -107,8 +107,11 @@ void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
   SignalBeginFrameReply* reply = new SignalBeginFrameReply();
   ClientContext* context = new ClientContext();
   stub_->async()->SignalBeginFrame(context, request, reply,
-                            [bs, reply, this](Status s) {
+                            [bs, reply, context, request, this](Status s) {
                               bs->RenderSharedTexture((void*)reply->shared_handle());
+                              delete context;
+                              delete reply;
+                              delete request;
                           });
 }
 #endif
@@ -120,12 +123,15 @@ void BrowserGRPCClient::RequestPaint(BrowserSource* bs) {
   RequestPaintReply* reply = new RequestPaintReply();
   ClientContext* context = new ClientContext();
   stub_->async()->RequestPaint(context, request, reply,
-                            [bs, reply, this](Status s) {
+			       [bs, reply, context, request, this](Status s) {
                               bs->RenderFrame(
                                 reply->width(),
                                 reply->height(),
                                 reply->mutable_data()
                               );
+                              delete context;
+                              delete reply;
+                              delete request;
                           });
 }
 
@@ -224,7 +230,7 @@ void BrowserGRPCClient::OnAudioStreamStarted(BrowserSource* bs) {
   ClientContext* context = new ClientContext();
 
   stub_->async()->OnAudioStreamStarted(context, request, reply,
-                             [bs, reply, this](Status s) {
+                             [bs, reply, context, request, this](Status s) {
                                bs->OnAudioStreamStarted(
                                  reply->id(),
                                  reply->channel_layout(),
@@ -232,6 +238,9 @@ void BrowserGRPCClient::OnAudioStreamStarted(BrowserSource* bs) {
                                );
                                OnAudioStreamPacket(bs);
                                OnAudioStreamStopped(bs);
+                              delete context;
+                              delete reply;
+                              delete request;
                             });
 }
 
@@ -245,7 +254,7 @@ void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
   ClientContext* context = new ClientContext();
 
   stub_->async()->OnAudioStreamPacket(context, request, reply,
-                             [bs, reply, this](Status s) {
+                             [bs, reply, context, request, this](Status s) {
                                std::lock_guard<std::mutex> lock(mtx);
                                 if (active) {
                                   OnAudioStreamPacket(bs);
@@ -255,6 +264,9 @@ void BrowserGRPCClient::OnAudioStreamPacket(BrowserSource* bs) {
                                     reply->pts()
                                   );
                                 }
+                              delete context;
+                              delete reply;
+                              delete request;
                             });
 }
 #endif
@@ -292,12 +304,15 @@ void BrowserGRPCClient::OnAudioStreamStopped(BrowserSource* bs) {
   ClientContext* context = new ClientContext();
 
   stub_->async()->OnAudioStreamStopped(context, request, reply,
-                             [bs, reply, this](Status s) {
-                                if (active) {
-                                  bs->OnAudioStreamStopped(
-                                    reply->id()
-                                  );
-                                  OnAudioStreamStarted(bs);
-                                }
+                             [bs, reply, context, request, this](Status s) {
+                              if (active) {
+                                bs->OnAudioStreamStopped(
+                                  reply->id()
+                                );
+                                OnAudioStreamStarted(bs);
+                              }
+                              delete context;
+                              delete reply;
+                              delete request;
                             });
 }
