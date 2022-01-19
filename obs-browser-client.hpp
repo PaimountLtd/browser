@@ -24,6 +24,7 @@ using grpc::ClientContext;
 using grpc::Status;
 using obs_browser_api::BrowserServer;
 using obs_browser_api::NoReply;
+using obs_browser_api::RegisterPIDRequest;
 using obs_browser_api::Request;
 using obs_browser_api::CreateRequest;
 using obs_browser_api::SetShowingRequest;
@@ -50,6 +51,7 @@ public:
 	BrowserGRPCClient(std::shared_ptr<Channel> channel)
       : stub_(BrowserServer::NewStub(channel)) {}
 
+  void RegisterPID(uint32_t PID);
   void IntializeBrowserCEF();
   void CreateBrowserSource(
       uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,

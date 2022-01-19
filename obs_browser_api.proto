@@ -8,6 +8,7 @@ option objc_class_prefix = "HLW";
 package obs_browser_api;
 
 service BrowserServer {
+  rpc RegisterPID (RegisterPIDRequest) returns (NoReply) {};
   rpc IntializeBrowserCEF (Request) returns (NoReply) {};
   rpc CreateBrowserSource (CreateRequest) returns (NoReply) {};
   rpc SetShowing (SetShowingRequest) returns (NoReply) {};
@@ -25,6 +26,10 @@ service BrowserServer {
   rpc OnAudioStreamPacket (OnAudioStreamPacketRequest) returns (OnAudioStreamPacketReply);
   rpc OnAudioStreamStopped (IdRequest) returns (OnAudioStreamStoppedReply);
   rpc RequestPaint (IdRequest) returns (RequestPaintReply);
+}
+
+message RegisterPIDRequest {
+  uint32 PID = 1;
 }
 
 message Request {

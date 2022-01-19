@@ -27,6 +27,7 @@ using grpc::Status;
 using grpc::ServerUnaryReactor;
 using obs_browser_api::BrowserServer;
 using obs_browser_api::NoReply;
+using obs_browser_api::RegisterPIDRequest;
 using obs_browser_api::Request;
 using obs_browser_api::CreateRequest;
 using obs_browser_api::SetShowingRequest;
@@ -46,6 +47,14 @@ static std::thread manager_thread;
 std::map<uint64_t, CefRefPtr<BrowserClient>> browserClients;
 std::mutex browser_clients_mtx;
 std::thread* shutdown_thread;
+std::thread* monitor_thread;
+
+std::mutex shutdown_lock;
+bool shutdown = false;
+
+#ifdef WIN32
+HANDLE client_proc = NULL;
+#endif
 
 static void BrowserShutdown(void)
 {
@@ -53,8 +62,30 @@ static void BrowserShutdown(void)
 	app = nullptr;
 }
 
+bool isValidHandleValue(const HANDLE h)
+{
+	return h != NULL && h != INVALID_HANDLE_VALUE;
+}
+
+void safeCloseHandle(HANDLE& h)
+{
+	if (isValidHandleValue(h)) {
+		CloseHandle(h);
+		h = NULL;
+	}
+}
+
 static void ShutdownServer(void)
 {
+	if (client_proc != NULL)
+		safeCloseHandle(client_proc);
+
+	if (monitor_thread && monitor_thread->joinable())
+		monitor_thread->join();
+
+	delete monitor_thread;
+	monitor_thread = nullptr;
+
 	server->Shutdown();
 }
 
@@ -192,8 +223,48 @@ void ExecuteOnBrowser(BrowserFunc func, CefRefPtr<CefBrowser> cefBrowser, bool a
 	}
 }
 
+void terminateCEF()
+{
+	if (manager_thread.joinable()) {
+		while (!QueueCEFTask([]() { CefQuitMessageLoop(); }))
+#ifdef _WIN32
+		Sleep(5);
+#else
+		sleep(5);
+#endif
+		manager_thread.join();
+	}
+}
+
+void MonitorClient(uint32_t PID)
+{
+	client_proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
+	if (client_proc != NULL)
+		WaitForSingleObject(client_proc, INFINITE);
+
+	std::unique_lock<std::mutex> ul(shutdown_lock);
+	if (!shutdown) {
+		terminateCEF();
+		shutdown_thread = new std::thread(ShutdownServer);
+	}
+}
+
 // Logic and data behind the server's behavior.
 class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
+	ServerUnaryReactor* RegisterPID(
+		CallbackServerContext* context, const RegisterPIDRequest* request,
+		NoReply* reply) override {
+		auto binded_fn = std::bind(
+			MonitorClient,
+			request->pid()
+		);
+		monitor_thread = new std::thread(binded_fn);
+
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
+	}
+
 	ServerUnaryReactor* IntializeBrowserCEF(
 		CallbackServerContext* context, const Request* request,
 		NoReply* reply) override {
@@ -437,16 +508,14 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		CallbackServerContext* context,
 		const NoArgs* request,
 		NoReply* reply) override {
-		if (manager_thread.joinable()) {
-			while (!QueueCEFTask([]() { CefQuitMessageLoop(); }))
-#ifdef _WIN32
-				Sleep(5);
-#else
-				sleep(5);
-#endif
-			manager_thread.join();
-		}
+		terminateCEF();
 		
+		{
+			std::unique_lock<std::mutex> ul(shutdown_lock);
+			shutdown = true;
+			safeCloseHandle(client_proc);
+		}
+
 		shutdown_thread = new std::thread(ShutdownServer);
 
 		ServerUnaryReactor* reactor = context->DefaultReactor();

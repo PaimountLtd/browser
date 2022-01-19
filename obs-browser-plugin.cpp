@@ -424,6 +424,7 @@ bool obs_module_load(void)
 
 	const std::wstring utfProgram(from_utf8_to_utf16_wide(path.c_str()));
 
+	uint32_t pid = 0;
 #ifdef WIN32
 	STARTUPINFO info={sizeof(info)};
 	PROCESS_INFORMATION processInfo;
@@ -440,15 +441,21 @@ bool obs_module_load(void)
 	    &info,
 	    &processInfo);
 
-	if (!success) return false;
+	if (!success)
+		return false;
+
+	pid = GetCurrentProcessId();
 #else
-	pid_t pid;
 	int success = posix_spawnp(&pid, path.c_str(), NULL, NULL, NULL, environ);
 #endif
+
+	if (!pid)
+		return false;
 
 	std::string target_str = "localhost:50051";
 	bc = new BrowserGRPCClient(
 		grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
+	bc->RegisterPID(pid);
 	
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 	obs_data_t *private_data = obs_get_private_data();

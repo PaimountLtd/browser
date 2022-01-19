@@ -1,5 +1,14 @@
 #include "obs-browser-client.hpp"
 
+void BrowserGRPCClient::RegisterPID(uint32_t PID) {
+  NoReply reply;
+  ClientContext context;
+  RegisterPIDRequest request;
+  request.set_pid(PID);
+
+  Status status = stub_->RegisterPID(&context, request, &reply);
+}
+
 void BrowserGRPCClient::IntializeBrowserCEF() {
 	uint32_t obs_version = obs_get_version();
 	std::string obs_locale = obs_get_locale();
@@ -20,32 +29,25 @@ void BrowserGRPCClient::IntializeBrowserCEF() {
 		obs_leave_graphics();
 	}
 #endif
-    // Data we are sending to the server.
-    Request request;
-    request.set_obs_version(obs_version);
-    request.set_obs_locale(obs_locale);
-    request.set_obs_conf_path(std::string(conf_path_abs.Get()));
-	  request.set_obs_browser_subprocess_path(std::string(abs_path));
-    request.set_hwaccel(hwaccel);
+  Request request;
+  request.set_obs_version(obs_version);
+  request.set_obs_locale(obs_locale);
+  request.set_obs_conf_path(std::string(conf_path_abs.Get()));
+  request.set_obs_browser_subprocess_path(std::string(abs_path));
+  request.set_hwaccel(hwaccel);
 
-    // Container for the data we expect from the server.
-    NoReply reply;
+  NoReply reply;
+  ClientContext context;
+  Status status = stub_->IntializeBrowserCEF(&context, request, &reply);
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    ClientContext context;
-
-    // The actual RPC.
-    Status status = stub_->IntializeBrowserCEF(&context, request, &reply);
-
-    // Act upon its status.
-    // if (status.ok()) {
-    //   return reply.message();
-    // } else {
-    //   std::cout << status.error_code() << ": " << status.error_message()
-    //             << std::endl;
-    //   return "RPC failed";
-    // }
+  // Act upon its status.
+  // if (status.ok()) {
+  //   return reply.message();
+  // } else {
+  //   std::cout << status.error_code() << ": " << status.error_message()
+  //             << std::endl;
+  //   return "RPC failed";
+  // }
   }
 
 void BrowserGRPCClient::CreateBrowserSource(
@@ -107,7 +109,7 @@ void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
   SignalBeginFrameReply* reply = new SignalBeginFrameReply();
   ClientContext* context = new ClientContext();
   stub_->async()->SignalBeginFrame(context, request, reply,
-                            [bs, reply, context, request, this](Status s) {
+                            [bs, reply, context, request](Status s) {
                               bs->RenderSharedTexture((void*)reply->shared_handle());
                               delete context;
                               delete reply;
