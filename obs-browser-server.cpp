@@ -130,7 +130,11 @@ static void BrowserInit(
 	prod_ver << std::to_string(obs_maj) << "." << std::to_string(obs_min)
 			<< "." << std::to_string(obs_pat);
 
+#if CHROME_VERSION_BUILD >= 4472
+	CefString(&settings.user_agent_product) = prod_ver.str();
+#else
 	CefString(&settings.product_version) = prod_ver.str();
+#endif
 
 	std::string accepted_languages;
 	if (obs_locale != "en-US") {
