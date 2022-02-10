@@ -338,10 +338,32 @@ void BrowserSource::RenderSharedTexture(void* shared_handle)
 	if (shared_handle && this->last_handle != shared_handle) {
 		obs_enter_graphics();
 
+		if (this->texture) {
+			if (this->extra_texture) {
+				gs_texture_destroy(this->extra_texture);
+				this->extra_texture = nullptr;
+			}
+			gs_texture_destroy(this->texture);
+			this->texture = nullptr;
+		}
+
 		gs_texture_destroy(this->texture);
 
 		this->texture = gs_texture_open_shared(
 			(uint32_t)(uintptr_t)shared_handle);
+
+		if (this->texture) {
+			const uint32_t cx = gs_texture_get_width(this->texture);
+			const uint32_t cy = gs_texture_get_height(this->texture);
+			const gs_color_format format =
+				gs_texture_get_color_format(this->texture);
+			const gs_color_format linear_format =
+				gs_generalize_format(format);
+			if (linear_format != format) {
+				this->extra_texture = gs_texture_create(
+					cx, cy, linear_format, 1, nullptr, 0);
+			}
+		}
 
 		obs_leave_graphics();
 		last_handle = shared_handle;
@@ -523,6 +545,16 @@ void BrowserSource::Render()
 		gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
 #endif
 
+		bool linear_sample = extra_texture == NULL;
+		gs_texture_t *draw_texture = texture;
+		if (!linear_sample &&
+		    !obs_source_get_texcoords_centered(source)) {
+			gs_copy_texture(extra_texture, texture);
+			draw_texture = extra_texture;
+
+			linear_sample = true;
+		}
+
 		const bool previous = gs_framebuffer_srgb_enabled();
 		gs_enable_framebuffer_srgb(true);
 
@@ -531,12 +563,19 @@ void BrowserSource::Render()
 
 		gs_eparam_t *const image =
 			gs_effect_get_param_by_name(effect, "image");
-		gs_effect_set_texture(image, texture);
+
+		const char *tech;
+		if (linear_sample) {
+			gs_effect_set_texture_srgb(image, draw_texture);
+			tech = "Draw";
+		} else {
+			gs_effect_set_texture(image, draw_texture);
+			tech = "DrawSrgbDecompress";
+		}
 
 		const uint32_t flip_flag = flip ? GS_FLIP_V : 0;
-
-		while (gs_effect_loop(effect, "DrawSrgbDecompress"))
-			gs_draw_sprite(texture, flip_flag, 0, 0);
+		while (gs_effect_loop(effect, tech))
+			gs_draw_sprite(draw_texture, flip_flag, 0, 0);
 
 		gs_blend_state_pop();
 
