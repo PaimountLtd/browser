@@ -224,7 +224,7 @@ void BrowserSource::DestroyBrowser(bool async)
 {
 	bc->DestroyBrowserSource((uint64_t) &source, async);
 }
-#if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
+#if CHROME_VERSION_BUILD < 4103
 void BrowserSource::ClearAudioStreams()
 {
 // #ifdef WIN32
@@ -519,7 +519,7 @@ void BrowserSource::Update(obs_data_t *settings)
 
 	DestroyBrowser(true);
 	DestroyTextures();
-#if CHROME_VERSION_BUILD < 4103 && CHROME_VERSION_BUILD >= 3683
+#if CHROME_VERSION_BUILD < 4103
 	ClearAudioStreams();
 #endif
 	if (!shutdown_on_invisible || obs_source_showing(source))

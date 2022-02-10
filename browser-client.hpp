@@ -42,9 +42,7 @@ class BrowserClient : public CefClient,
 #endif
 		      public CefContextMenuHandler,
 		      public CefRenderHandler,
-#if CHROME_VERSION_BUILD >= 3683
 		      public CefAudioHandler,
-#endif
 		      public CefLoadHandler {
 
 	bool sharing_available = false;
@@ -104,23 +102,17 @@ public:
 #endif
 	virtual CefRefPtr<CefContextMenuHandler>
 	GetContextMenuHandler() override;
-#if CHROME_VERSION_BUILD >= 3683
 	virtual CefRefPtr<CefAudioHandler> GetAudioHandler() override;
-#endif
 
 	virtual bool
 	OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-#if CHROME_VERSION_BUILD >= 3770
 				 CefRefPtr<CefFrame> frame,
-#endif
 				 CefProcessId source_process,
 				 CefRefPtr<CefProcessMessage> message) override;
 
 	/* CefDisplayHandler */
 	virtual bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
-#if CHROME_VERSION_BUILD >= 3282
 				      cef_log_severity_t level,
-#endif
 				      const CefString &message,
 				      const CefString &source,
 				      int line) override;
@@ -134,9 +126,7 @@ public:
 		      bool user_gesture, const CefPopupFeatures &popupFeatures,
 		      CefWindowInfo &windowInfo, CefRefPtr<CefClient> &client,
 		      CefBrowserSettings &settings,
-#if CHROME_VERSION_BUILD >= 3770
 		      CefRefPtr<CefDictionaryValue> &extra_info,
-#endif
 		      bool *no_javascript_access) override;
 #if CHROME_VERSION_BUILD >= 4638
 	/* CefRequestHandler */
@@ -162,11 +152,7 @@ public:
 			    CefRefPtr<CefMenuModel> model) override;
 
 	/* CefRenderHandler */
-#if CHROME_VERSION_BUILD >= 3578
 	virtual void GetViewRect(
-#else
-	virtual bool GetViewRect(
-#endif
 		CefRefPtr<CefBrowser> browser, CefRect &rect) override;
 	virtual void OnPaint(CefRefPtr<CefBrowser> browser,
 			     PaintElementType type, const RectList &dirtyRects,
@@ -192,7 +178,6 @@ public:
 	const int kFramesPerBuffer = 1024;
 	virtual bool GetAudioParameters(CefRefPtr<CefBrowser> browser,
 					CefAudioParameters &params) override;
-#elif CHROME_VERSION_BUILD >= 3683
 	virtual void OnAudioStreamPacket(CefRefPtr<CefBrowser> browser,
 					 int audio_stream_id,
 					 const float **data, int frames,
