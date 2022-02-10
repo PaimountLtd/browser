@@ -339,7 +339,6 @@ void BrowserSource::RenderSharedTexture(void* shared_handle)
 		obs_enter_graphics();
 
 		gs_texture_destroy(this->texture);
-		this->texture = nullptr;
 
 		this->texture = gs_texture_open_shared(
 			(uint32_t)(uintptr_t)shared_handle);

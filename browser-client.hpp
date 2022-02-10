@@ -38,8 +38,6 @@ using obs_browser_api::OnAudioStreamStoppedReply;
 using obs_browser_api::SignalBeginFrameReply;
 using obs_browser_api::RequestPaintReply;
 
-#define USE_TEXTURE_COPY 0
-
 class BrowserClient : public CefClient,
 		      public CefDisplayHandler,
 		      public CefLifeSpanHandler,
@@ -55,16 +53,6 @@ class BrowserClient : public CefClient,
 public:
 	CefRect popupRect;
 	CefRect originalPopupRect;
-
-// #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-#if USE_TEXTURE_COPY
-	gs_texture_t *texture = nullptr;
-#endif
-#ifdef _WIN32
-	void *last_handle = INVALID_HANDLE_VALUE;
-#elif defined(__APPLE__)
-	void *last_handle = nullptr;
-#endif
 
 	uint32_t width;
 	uint32_t height;

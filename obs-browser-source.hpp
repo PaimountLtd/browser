@@ -79,9 +79,6 @@ struct BrowserSource {
 	int id = 0;
 
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-#if USE_TEXTURE_COPY
-	gs_texture_t *texture = nullptr;
-#endif
 #ifdef _WIN32
 	void *last_handle = INVALID_HANDLE_VALUE;
 #elif defined(__APPLE__)
