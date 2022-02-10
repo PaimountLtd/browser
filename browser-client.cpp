@@ -135,6 +135,7 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 			    int height)
 {
 	if (type != PET_VIEW) {
+		// TODO Overlay texture on top of bs->texture
 		return;
 	}
 
@@ -155,9 +156,15 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 	}
 }
 
-void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>, PaintElementType,
+void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
+				       PaintElementType type,
 				       const RectList &, void *shared_handle)
 {
+	if (type != PET_VIEW) {
+		// TODO Overlay texture on top of bs->texture
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock_client(browser_mtx);
 	if (SignalBeginFrame_requested) {
 		SignalBeginFrame_reply->set_shared_handle((int64_t) shared_handle);
