@@ -47,13 +47,11 @@
 #define ENABLE_WASHIDDEN 0
 #endif
 
-
 #define SendBrowserProcessMessage(browser, pid, msg)             \
 	CefRefPtr<CefFrame> mainFrame = browser->GetMainFrame(); \
 	if (mainFrame) {                                         \
 		mainFrame->SendProcessMessage(pid, msg);         \
 	}
-#else
 
 #ifdef _MSC_VER
 #pragma warning(pop)
