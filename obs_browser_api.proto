@@ -51,6 +51,8 @@ message CreateRequest {
   int32 video_fps = 8;
   string url = 9;
   string css = 10;
+  double canvas_fps = 11;
+  bool is_showing = 12;
 }
 
 message SetShowingRequest {

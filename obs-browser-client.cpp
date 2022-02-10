@@ -53,7 +53,8 @@ void BrowserGRPCClient::IntializeBrowserCEF() {
 void BrowserGRPCClient::CreateBrowserSource(
     uint64_t sourceId, bool hwaccel, bool reroute_audio,
     int width, int height, int fps, bool fps_custom,
-    int video_fps, std::string url, std::string css) {
+    int video_fps, std::string url, std::string css,
+    double canvas_fps, bool is_showing) {
   std::lock_guard<std::mutex> lock(mtx);
   CreateRequest request;
   request.set_id(sourceId);
@@ -66,6 +67,8 @@ void BrowserGRPCClient::CreateBrowserSource(
   request.set_video_fps(video_fps);
   request.set_url(url);
   request.set_css(css);
+  request.set_canvas_fps(canvas_fps);
+  request.set_is_showing(is_showing);
 
   NoReply reply;
   ClientContext context;
@@ -101,7 +104,8 @@ void BrowserGRPCClient::Refresh(uint64_t sourceId) {
   stub_->Refresh(&context, request, &reply);
 }
 
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
+	defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 void BrowserGRPCClient::SignalBeginFrame(BrowserSource* bs) {
   IdRequest* request = new IdRequest();
   request->set_id((uint64_t) &bs->source);

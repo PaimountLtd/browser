@@ -21,6 +21,9 @@
 #include "json11/json11.hpp"
 #include <iostream>
 #include <vector>
+#if defined(__APPLE__) && CHROME_VERSION_BUILD > 4430
+#include <IOSurface/IOSurface.h>
+#endif
 
 using namespace json11;
 
@@ -72,9 +75,34 @@ CefRefPtr<CefAudioHandler> BrowserClient::GetAudioHandler()
 }
 #endif
 
+#if CHROME_VERSION_BUILD >= 4638
+CefRefPtr<CefRequestHandler> BrowserClient::GetRequestHandler()
+{
+	return this;
+}
+
+CefRefPtr<CefResourceRequestHandler> BrowserClient::GetResourceRequestHandler(
+	CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>,
+	CefRefPtr<CefRequest> request, bool, bool, const CefString &, bool &)
+{
+	if (request->GetHeaderByName("origin") == "null") {
+		return this;
+	}
+
+	return nullptr;
+}
+
+CefResourceRequestHandler::ReturnValue BrowserClient::OnBeforeResourceLoad(
+	CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>, CefRefPtr<CefRequest>,
+	CefRefPtr<CefCallback>)
+{
+	return RV_CONTINUE;
+}
+#endif
+
 bool BrowserClient::OnBeforePopup(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>,
 				  const CefString &, const CefString &,
-				  WindowOpenDisposition, bool,
+				  cef_window_open_disposition_t, bool,
 				  const CefPopupFeatures &, CefWindowInfo &,
 				  CefRefPtr<CefClient> &, CefBrowserSettings &,
 #if CHROME_VERSION_BUILD >= 3770

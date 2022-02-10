@@ -44,27 +44,6 @@ using namespace json11;
 static mutex browser_list_mutex;
 static BrowserSource *first_browser = nullptr;
 
-static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
-{
-	if (!browser)
-		return;
-
-#if ENABLE_WASHIDDEN
-	if (isVisible) {
-		browser->GetHost()->WasHidden(false);
-		browser->GetHost()->Invalidate(PET_VIEW);
-	} else {
-		browser->GetHost()->WasHidden(true);
-	}
-#endif
-
-	CefRefPtr<CefProcessMessage> msg =
-		CefProcessMessage::Create("Visibility");
-	CefRefPtr<CefListValue> args = msg->GetArgumentList();
-	args->SetBool(0, isVisible);
-	SendBrowserProcessMessage(browser, PID_RENDERER, msg);
-}
-
 void DispatchJSEvent(std::string eventName, std::string jsonString,
 		     BrowserSource *browser = nullptr);
 
@@ -218,10 +197,16 @@ void BrowserSource::OnAudioStreamStopped(int id)
 
 bool BrowserSource::CreateBrowser()
 {
+	struct obs_video_info ovi;
+	obs_get_video_info(&ovi);
+	canvas_fps = (double)ovi.fps_num / (double)ovi.fps_den;
+	bool is_showing = obs_source_showing(source);
+
 	bc->CreateBrowserSource(
 		(uint64_t) &source, hwaccel, reroute_audio, 
 		width, height, fps, fps_custom,
-		obs_get_active_fps(), url, css
+		obs_get_active_fps(), url, css,
+		canvas_fps, is_showing
 	);
 
 	if (reroute_audio)
@@ -313,7 +298,8 @@ void BrowserSource::SetShowing(bool showing)
 	} else {
 		bc->SetShowing((uint64_t) &source, showing);
 
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
+	defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 		if (showing && !fps_custom) {
 			reset_frame = false;
 		}
@@ -331,43 +317,63 @@ void BrowserSource::Refresh()
 	bc->Refresh((uint64_t) &source);
 }
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-#ifdef _WIN32
+#ifdef BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED
 
 void BrowserSource::RenderSharedTexture(void* shared_handle)
 {
-	if (shared_handle && this->last_handle != shared_handle) {
-		obs_enter_graphics();
+#ifndef _WIN32
+	if (shared_handle == last_handle)
+		return;
+#endif
 
-		if (this->texture) {
-			if (this->extra_texture) {
-				gs_texture_destroy(this->extra_texture);
-				this->extra_texture = nullptr;
-			}
-			gs_texture_destroy(this->texture);
-			this->texture = nullptr;
+	obs_enter_graphics();
+
+	if (this->texture) {
+		if (this->extra_texture) {
+			gs_texture_destroy(this->extra_texture);
+			this->extra_texture = nullptr;
 		}
-
-		gs_texture_destroy(this->texture);
-
-		this->texture = gs_texture_open_shared(
-			(uint32_t)(uintptr_t)shared_handle);
-
-		if (this->texture) {
-			const uint32_t cx = gs_texture_get_width(this->texture);
-			const uint32_t cy = gs_texture_get_height(this->texture);
-			const gs_color_format format =
-				gs_texture_get_color_format(this->texture);
-			const gs_color_format linear_format =
-				gs_generalize_format(format);
-			if (linear_format != format) {
-				this->extra_texture = gs_texture_create(
-					cx, cy, linear_format, 1, nullptr, 0);
-			}
-		}
-
-		obs_leave_graphics();
-		last_handle = shared_handle;
+#ifdef _WIN32
+		gs_texture_release_sync(bs->texture, 0);
+#endif
+		gs_texture_destroy(bs->texture);
+#ifdef _WIN32
+		CloseHandle(extra_handle);
+#endif
+		bs->texture = nullptr;
 	}
+
+#if defined(__APPLE__) && CHROME_VERSION_BUILD > 4183
+	bs->texture = gs_texture_create_from_iosurface(
+		(IOSurfaceRef)(uintptr_t)shared_handle);
+#elif defined(_WIN32) && CHROME_VERSION_BUILD > 4183
+	DuplicateHandle(GetCurrentProcess(), (HANDLE)(uintptr_t)shared_handle,
+			GetCurrentProcess(), &extra_handle, 0, false,
+			DUPLICATE_SAME_ACCESS);
+
+	bs->texture =
+		gs_texture_open_nt_shared((uint32_t)(uintptr_t)shared_handle);
+	gs_texture_acquire_sync(bs->texture, 1, INFINITE);
+#else
+	bs->texture =
+		gs_texture_open_shared((uint32_t)(uintptr_t)shared_handle);
+#endif
+
+	if (bs->texture) {
+		const uint32_t cx = gs_texture_get_width(bs->texture);
+		const uint32_t cy = gs_texture_get_height(bs->texture);
+		const gs_color_format format =
+			gs_texture_get_color_format(bs->texture);
+		const gs_color_format linear_format =
+			gs_generalize_format(format);
+		if (linear_format != format) {
+			bs->extra_texture = gs_texture_create(
+				cx, cy, linear_format, 1, nullptr, 0);
+		}
+	}
+	obs_leave_graphics();
+
+	last_handle = shared_handle;
 }
 
 inline void BrowserSource::SignalBeginFrame()
@@ -521,9 +527,21 @@ void BrowserSource::Tick()
 {
 	if (create_browser && CreateBrowser())
 		create_browser = false;
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED)
 	if (!fps_custom)
 		reset_frame = true;
+#else
+	struct obs_video_info ovi;
+	obs_get_video_info(&ovi);
+	double video_fps = (double)ovi.fps_num / (double)ovi.fps_den;
+
+	if (!fps_custom) {
+		if (!!cefBrowser && canvas_fps != video_fps) {
+			Update();
+		}
+	}
+#endif
 #endif
 }
 
@@ -582,7 +600,8 @@ void BrowserSource::Render()
 		gs_enable_framebuffer_srgb(previous);
 	}
 
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
+	defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	SignalBeginFrame();
 #endif
 }

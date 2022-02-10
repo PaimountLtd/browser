@@ -195,6 +195,10 @@ void QCefWidgetInternal::closeBrowser()
 				reinterpret_cast<QCefBrowserClient *>(
 					client.get());
 
+			if (bc) {
+				bc->widget = nullptr;
+			}
+
 			cefBrowser->GetHost()->WasHidden(true);
 			cefBrowser->GetHost()->CloseBrowser(true);
 
@@ -231,6 +235,7 @@ void QCefWidgetInternal::closeBrowser()
 #endif
 
 		destroyBrowser(browser);
+		browser = nullptr;
 		cefBrowser = nullptr;
 	}
 }
@@ -332,7 +337,10 @@ void QCefWidgetInternal::Init()
 
 #ifdef __APPLE__
 			QSize size = this->size();
+#endif
 
+#if CHROME_VERSION_BUILD < 4430
+#ifdef __APPLE__
 			windowInfo.SetAsChild((CefWindowHandle)handle, 0, 0,
 					      size.width(), size.height());
 #else
@@ -342,6 +350,11 @@ void QCefWidgetInternal::Init()
 			CefRect rc = {0, 0, size.width(), size.height()};
 #endif
 			windowInfo.SetAsChild((CefWindowHandle)handle, rc);
+#endif
+#else
+			windowInfo.SetAsChild((CefWindowHandle)handle,
+					      CefRect(0, 0, size.width(),
+						      size.height()));
 #endif
 
 			CefRefPtr<QCefBrowserClient> browserClient =
@@ -416,6 +429,9 @@ void QCefWidgetInternal::Resize()
 		changes.height = size.height();
 		XConfigureWindow(xDisplay, (Window)handle,
 				 CWX | CWY | CWHeight | CWWidth, &changes);
+#if CHROME_VERSION_BUILD >= 4638
+		XSync(xDisplay, false);
+#endif
 #endif
 	});
 

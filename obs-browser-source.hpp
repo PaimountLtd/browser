@@ -66,6 +66,7 @@ struct BrowserSource {
 	int height = 0;
 	bool fps_custom = false;
 	int fps = 0;
+	double canvas_fps = 0;
 	bool restart = false;
 	bool shutdown_on_invisible = false;
 	bool is_local = false;
@@ -73,7 +74,8 @@ struct BrowserSource {
 	bool first_update = true;
 	bool reroute_audio = true;
 
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
+	defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	bool reset_frame = false;
 #endif
 	bool is_showing = false;
@@ -82,6 +84,7 @@ struct BrowserSource {
 #ifdef SHARED_TEXTURE_SUPPORT_ENABLED
 #ifdef _WIN32
 	void *last_handle = INVALID_HANDLE_VALUE;
+	void *extra_handle = INVALID_HANDLE_VALUE;
 #elif defined(__APPLE__)
 	void *last_handle = nullptr;
 #endif
@@ -141,7 +144,8 @@ struct BrowserSource {
 		::google::protobuf::RepeatedPtrField<std::string>* data, int32_t frames, int64_t pts);
 	void OnAudioStreamStopped(int id);
 
-#if defined(_WIN32) && defined(SHARED_TEXTURE_SUPPORT_ENABLED)
+#if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
+	defined(SHARED_TEXTURE_SUPPORT_ENABLED)
 	inline void SignalBeginFrame();
 	void RenderSharedTexture(void* shared_handle);
 #endif

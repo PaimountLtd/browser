@@ -56,7 +56,8 @@ public:
   void CreateBrowserSource(
       uint64_t sourceId, bool hwaccel, bool reroute_audio, int width,
       int height, int fps, bool fps_custom, int video_fps,
-      std::string url, std::string css
+      std::string url, std::string css, double canvas_fps,
+      bool is_showing
   );
   void SetShowing(uint64_t sourceId, bool showing);
   void SetActive(uint64_t sourceId, bool active);

@@ -124,7 +124,8 @@ void BrowserApp::OnContextCreated(CefRefPtr<CefBrowser> browser,
 {
 	CefRefPtr<CefV8Value> globalObj = context->GetGlobal();
 
-	CefRefPtr<CefV8Value> obsStudioObj = CefV8Value::CreateObject(0, 0);
+	CefRefPtr<CefV8Value> obsStudioObj =
+	    CefV8Value::CreateObject(nullptr, nullptr);
 	globalObj->SetValue("obsstudio", obsStudioObj,
 			    V8_PROPERTY_ATTRIBUTE_NONE);
 
@@ -161,7 +162,7 @@ void BrowserApp::ExecuteJSFunction(CefRefPtr<CefBrowser> browser,
 	CefRefPtr<CefV8Value> jsFunction = obsStudioObj->GetValue(functionName);
 
 	if (jsFunction && jsFunction->IsFunction())
-		jsFunction->ExecuteFunction(NULL, arguments);
+		jsFunction->ExecuteFunction(nullptr, arguments);
 
 	context->Exit();
 }
@@ -317,7 +318,7 @@ bool BrowserApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 
 		CefRefPtr<CefV8Value> dispatchEvent =
 			globalObj->GetValue("dispatchEvent");
-		dispatchEvent->ExecuteFunction(NULL, arguments);
+		dispatchEvent->ExecuteFunction(nullptr, arguments);
 
 		context->Exit();
 
@@ -347,7 +348,7 @@ bool BrowserApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 		args.push_back(retval);
 
 		if (callback)
-			callback->ExecuteFunction(NULL, args);
+			callback->ExecuteFunction(nullptr, args);
 
 		context->Exit();
 

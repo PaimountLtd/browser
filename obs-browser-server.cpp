@@ -253,6 +253,27 @@ void MonitorClient(uint32_t PID)
 	}
 }
 
+static void SendBrowserVisibility(CefRefPtr<CefBrowser> browser, bool isVisible)
+{
+	if (!browser)
+		return;
+
+#if ENABLE_WASHIDDEN
+	if (isVisible) {
+		browser->GetHost()->WasHidden(false);
+		browser->GetHost()->Invalidate(PET_VIEW);
+	} else {
+		browser->GetHost()->WasHidden(true);
+	}
+#endif
+
+	CefRefPtr<CefProcessMessage> msg =
+		CefProcessMessage::Create("Visibility");
+	CefRefPtr<CefListValue> args = msg->GetArgumentList();
+	args->SetBool(0, isVisible);
+	SendBrowserProcessMessage(browser, PID_RENDERER, msg);
+}
+
 // Logic and data behind the server's behavior.
 class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 	ServerUnaryReactor* RegisterPID(
@@ -295,13 +316,16 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 		uint32_t width = request->width();
 		uint32_t height = request->height();
 		uint32_t fps = request->fps();
+		double canvas_fps = request->canvas_fps();
 		bool fps_custom = request->fps_custom();
 		uint32_t video_fps = request->video_fps();
 		std::string url = request->url();
 		std::string css = request->css();
+		bool is_showing = request->is_showing();
 		QueueCEFTask([this, id, hwaccel, reroute_audio,
 			width, height, fps, fps_custom,
-			video_fps, url, css]() {
+			video_fps, url, css, canvas_fps,
+			is_showing]() {
 			std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
 
 			browserClients.insert_or_assign(
@@ -310,8 +334,13 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			);
 			std::lock_guard<std::mutex> lock_client(browserClients[id]->browser_mtx);
 			CefWindowInfo windowInfo;
+#if CHROME_VERSION_BUILD < 4430
 			windowInfo.width = width;
 			windowInfo.height = height;
+#else
+			windowInfo.bounds.width = width;
+			windowInfo.bounds.height = height;
+#endif
 			windowInfo.windowless_rendering_enabled = true;
 			windowInfo.shared_texture_enabled = hwaccel;
 
@@ -321,12 +350,22 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			browserClients[id]->css = css;
 
 			CefBrowserSettings cefBrowserSettings;
+
+#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
+#ifdef BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED
 			if (!fps_custom) {
 				windowInfo.external_begin_frame_enabled = true;
 				cefBrowserSettings.windowless_frame_rate = 0;
 			} else {
 				cefBrowserSettings.windowless_frame_rate = fps;
 			}
+#else
+			cefBrowserSettings.windowless_frame_rate =
+				(fps_custom) ? fps : canvas_fps;
+#endif
+#else
+			cefBrowserSettings.windowless_frame_rate = fps;
+#endif
 
 			cefBrowserSettings.default_font_size = 16;
 			cefBrowserSettings.default_fixed_font_size = 16;
@@ -342,17 +381,8 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			if (reroute_audio)
 				browserClients[id]->cefBrowser->GetHost()->SetAudioMuted(true);
 
-			CefRefPtr<CefProcessMessage> msg =
-				CefProcessMessage::Create("Visibility");
-			CefRefPtr<CefListValue> args = msg->GetArgumentList();
-			args->SetBool(0, true);
-			SendBrowserProcessMessage(browserClients[id]->cefBrowser, PID_RENDERER, msg);
-
-			CefRefPtr<CefProcessMessage> msg2 =
-				CefProcessMessage::Create("Active");
-			CefRefPtr<CefListValue> args2 = msg2->GetArgumentList();
-			args2->SetBool(0, true);
-			SendBrowserProcessMessage(browserClients[id]->cefBrowser, PID_RENDERER, msg2);
+			SendBrowserVisibility(browserClients[id]->cefBrowser,
+					      is_showing);
 		});
 		ServerUnaryReactor* reactor = context->DefaultReactor();
 		reactor->Finish(Status::OK);
@@ -652,7 +682,11 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 
 		ExecuteOnBrowser(
 			[=](CefRefPtr<CefBrowser> cefBrowser) {
+#if CHROME_VERSION_BUILD < 4430
 				cefBrowser->GetHost()->SendFocusEvent(focus);
+#else
+				cefBrowser->GetHost()->SetFocus(focus);
+#endif
 			}, browserClients[request->id()]->cefBrowser, true);
 
 		ServerUnaryReactor* reactor = context->DefaultReactor();
