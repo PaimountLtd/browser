@@ -109,6 +109,7 @@ struct BrowserSource {
 	bool CreateBrowser();
 	void DestroyBrowser(bool async = false);
 	void ExecuteOnBrowser(BrowserFunc func, bool async = false);
+	void UpdateVideoFPS(double video_fps);
 
 	/* ---------------------------- */
 

@@ -76,6 +76,16 @@ void BrowserGRPCClient::CreateBrowserSource(
   active = true;
 }
 
+void BrowserGRPCClient::UpdateVideoFPS(uint64_t sourceId, double video_fps) {
+  UpdateVideoFPSRequest request;
+  request.set_video_fps(video_fps);
+  request.set_id(sourceId);
+
+  NoReply reply;
+  ClientContext context;
+  stub_->UpdateVideoFPS(&context, request, &reply);
+}
+
 void BrowserGRPCClient::SetShowing(uint64_t sourceId, bool showing) {
   SetShowingRequest request;
   request.set_showing(showing);

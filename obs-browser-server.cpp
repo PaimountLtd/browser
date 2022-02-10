@@ -30,6 +30,7 @@ using obs_browser_api::NoReply;
 using obs_browser_api::RegisterPIDRequest;
 using obs_browser_api::Request;
 using obs_browser_api::CreateRequest;
+using obs_browser_api::UpdateVideoFPSRequest;
 using obs_browser_api::SetShowingRequest;
 using obs_browser_api::SetActiveRequest;
 using obs_browser_api::NoArgs;
@@ -384,6 +385,25 @@ class BrowserServerServiceImpl final : public BrowserServer::CallbackService {
 			SendBrowserVisibility(browserClients[id]->cefBrowser,
 					      is_showing);
 		});
+		ServerUnaryReactor* reactor = context->DefaultReactor();
+		reactor->Finish(Status::OK);
+		return reactor;
+	}
+
+	ServerUnaryReactor* UpdateVideoFPS(
+		CallbackServerContext* context, const UpdateVideoFPSRequest* request,
+		NoReply* reply) override {
+		std::lock_guard<std::mutex> lock_clients(browser_clients_mtx);
+		if (!browserClients[request->id()]) {
+			ServerUnaryReactor* reactor = context->DefaultReactor();
+			reactor->Finish(Status::OK);
+			return reactor;
+		}
+
+		std::lock_guard<std::mutex> lock_client(browserClients[request->id()]->browser_mtx);
+		browserClients[request->id()]->cefBrowser->GetHost()
+			->SetWindowlessFrameRate(request->video_fps());
+
 		ServerUnaryReactor* reactor = context->DefaultReactor();
 		reactor->Finish(Status::OK);
 		return reactor;

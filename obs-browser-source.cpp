@@ -215,6 +215,11 @@ bool BrowserSource::CreateBrowser()
 	return true;
 }
 
+void BrowserSource::UpdateVideoFPS(double video_fps)
+{
+	bc->UpdateVideoFPS((uint64_t) &source, video_fps);
+}
+
 void BrowserSource::DestroyBrowser(bool async)
 {
 	bc->DestroyBrowserSource((uint64_t) &source, async);

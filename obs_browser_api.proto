@@ -11,6 +11,7 @@ service BrowserServer {
   rpc RegisterPID (RegisterPIDRequest) returns (NoReply) {};
   rpc IntializeBrowserCEF (Request) returns (NoReply) {};
   rpc CreateBrowserSource (CreateRequest) returns (NoReply) {};
+  rpc UpdateVideoFPS (UpdateVideoFPSRequest) returns (NoReply) {};
   rpc SetShowing (SetShowingRequest) returns (NoReply) {};
   rpc SetActive (SetActiveRequest) returns (NoReply) {};
   rpc Refresh (IdRequest) returns (NoReply) {};
@@ -53,6 +54,11 @@ message CreateRequest {
   string css = 10;
   double canvas_fps = 11;
   bool is_showing = 12;
+}
+
+message UpdateVideoFPSRequest {
+  uint64 id = 1;
+  double video_fps = 2;
 }
 
 message SetShowingRequest {

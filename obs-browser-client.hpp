@@ -27,6 +27,7 @@ using obs_browser_api::NoReply;
 using obs_browser_api::RegisterPIDRequest;
 using obs_browser_api::Request;
 using obs_browser_api::CreateRequest;
+using obs_browser_api::UpdateVideoFPSRequest;
 using obs_browser_api::SetShowingRequest;
 using obs_browser_api::SetActiveRequest;
 using obs_browser_api::NoArgs;
@@ -59,6 +60,7 @@ public:
       std::string url, std::string css, double canvas_fps,
       bool is_showing
   );
+  void UpdateVideoFPS(uint64_t sourceId, double video_fps);
   void SetShowing(uint64_t sourceId, bool showing);
   void SetActive(uint64_t sourceId, bool active);
   void Refresh(uint64_t sourceId);
