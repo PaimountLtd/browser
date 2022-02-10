@@ -323,6 +323,25 @@ void BrowserSource::SetShowing(bool showing)
 			reset_frame = false;
 		}
 #endif
+
+		if (showing)
+			return;
+
+		obs_enter_graphics();
+
+		if (hwaccel && texture) {
+#ifdef _WIN32
+			gs_texture_release_sync(texture, 0);
+#endif
+			DestroyTextures();
+#ifdef _WIN32
+			CloseHandle(extra_handle);
+#endif
+		} else {
+			DestroyTextures();
+		}
+
+		obs_leave_graphics();
 	}
 }
 

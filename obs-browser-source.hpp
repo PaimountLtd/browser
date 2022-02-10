@@ -62,6 +62,16 @@ struct BrowserSource {
 	std::string css;
 	gs_texture_t *texture = nullptr;
 	gs_texture_t *extra_texture = nullptr;
+
+#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
+#ifdef _WIN32
+	void *last_handle = INVALID_HANDLE_VALUE;
+	void *extra_handle = INVALID_HANDLE_VALUE;
+#elif defined(__APPLE__)
+	void *last_handle = nullptr;
+#endif
+#endif
+
 	int width = 0;
 	int height = 0;
 	bool fps_custom = false;
@@ -80,15 +90,6 @@ struct BrowserSource {
 #endif
 	bool is_showing = false;
 	int id = 0;
-
-#ifdef SHARED_TEXTURE_SUPPORT_ENABLED
-#ifdef _WIN32
-	void *last_handle = INVALID_HANDLE_VALUE;
-	void *extra_handle = INVALID_HANDLE_VALUE;
-#elif defined(__APPLE__)
-	void *last_handle = nullptr;
-#endif
-#endif
 
 	inline void DestroyTextures()
 	{
