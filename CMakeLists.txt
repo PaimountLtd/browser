@@ -290,34 +290,10 @@ endif()
 
 if (WIN32)
 	math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-
-	install(
-		DIRECTORY "${CEF_ROOT_DIR}/Resources/"
-		DESTINATION "${OBS_PLUGIN_DESTINATION}"
-	)
-
-	install(FILES
-		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
-		"${CEF_ROOT_DIR}/Release/libcef.dll"
-		"${CEF_ROOT_DIR}/Release/libEGL.dll"
-		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
-		"${CEF_ROOT_DIR}/Release/natives_blob.bin"
-		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
-		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
-		DESTINATION "${OBS_PLUGIN_DESTINATION}"
-		CONFIGURATIONS Debug
-	)
-
-	install(FILES
-		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
-		"${CEF_ROOT_DIR}/Release/libcef.dll"
-		"${CEF_ROOT_DIR}/Release/libEGL.dll"
-		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
-		"${CEF_ROOT_DIR}/Release/natives_blob.bin"
-		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
-		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
-		DESTINATION "${OBS_PLUGIN_DESTINATION}"
-		CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+	add_custom_command(TARGET obs-browser POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CEF_ROOT_DIR}/Resources"
+		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
 	)
 
 	target_sources(obs-browser-page
@@ -344,11 +320,27 @@ if (WIN32)
 		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
 		"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
 	)
+
+	install(FILES
+		"${CEF_ROOT_DIR}/Release/chrome_elf.dll"
+		"${CEF_ROOT_DIR}/Release/libcef.dll"
+		"${CEF_ROOT_DIR}/Release/libEGL.dll"
+		"${CEF_ROOT_DIR}/Release/libGLESv2.dll"
+		"${CEF_ROOT_DIR}/Release/snapshot_blob.bin"
+		"${CEF_ROOT_DIR}/Release/v8_context_snapshot.bin"
+		DESTINATION "${OBS_PLUGIN_DESTINATION}")
+
+	install(DIRECTORY "${CEF_ROOT_DIR}/Resources/"
+		DESTINATION "${OBS_PLUGIN_DESTINATION}")
+
 	if(EXISTS "${CEF_ROOT_DIR}/Release/natives_blob.bin")
 		add_custom_command(TARGET obs-browser POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy
 			"${CEF_ROOT_DIR}/Release/natives_blob.bin"
 			"${CMAKE_BINARY_DIR}/rundir/$<CONFIGURATION>/obs-plugins/${BITS}bit/"
+		)
+		install(FILES "${CEF_ROOT_DIR}/Release/natives_blob.bin"
+			DESTINATION "${OBS_PLUGIN_DESTINATION}"
 		)
 	endif()
 endif()
