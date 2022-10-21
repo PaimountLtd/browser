@@ -97,7 +97,11 @@ target_sources(
 target_include_directories(obs-browser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps
                                                ${CMAKE_BINARY_DIR}/config)
 
-target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api)
+if(ENABLE_UI)
+  target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api)
+else()
+  target_link_libraries(obs-browser PRIVATE OBS::libobs)
+endif()
 
 target_compile_features(obs-browser PRIVATE cxx_std_17)
 
