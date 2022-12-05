@@ -27,14 +27,14 @@ typedef std::function<void()> MessageTask;
 typedef std::function<void(CefRefPtr<CefBrowser>)> BrowserFunc;
 
 struct Task {
-	CefRefPtr<CefBrowser> browser;
-	BrowserFunc func;
+    CefRefPtr<CefBrowser> browser;
+    BrowserFunc func;
 
-	inline Task() {}
-	inline Task(CefRefPtr<CefBrowser> browser_, BrowserFunc func_)
-		: browser(browser_), func(func_)
-	{
-	}
+    inline Task() {}
+    inline Task(CefRefPtr<CefBrowser> browser_, BrowserFunc func_)
+        : browser(browser_), func(func_)
+    {
+    }
 };
 
 extern std::mutex browserTaskMutex;
@@ -45,7 +45,8 @@ void ExecuteTask(MessageTask task);
 void ExecuteSyncTask(MessageTask task);
 void DoCefMessageLoop(int ms);
 void Process();
-void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func);
+void QueueBrowserTask(CefRefPtr<CefBrowser> browser,
+                    BrowserFunc func);
 bool isMainThread();
 std::string getExecutablePath();
 bool isHighThanBigSur();

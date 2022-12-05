@@ -80,9 +80,10 @@ CefRefPtr<CefResourceRequestHandler> BrowserClient::GetResourceRequestHandler(
 	return nullptr;
 }
 
-CefResourceRequestHandler::ReturnValue BrowserClient::OnBeforeResourceLoad(
-	CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>, CefRefPtr<CefRequest>,
-	CefRefPtr<CefCallback>)
+CefResourceRequestHandler::ReturnValue
+BrowserClient::OnBeforeResourceLoad(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>,
+				    CefRefPtr<CefRequest>,
+				    CefRefPtr<CefCallback>)
 {
 	return RV_CONTINUE;
 }
@@ -296,7 +297,7 @@ bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 			QToolTip::showText(QCursor::pos(), str_text.c_str());
 		});
 	return true;
-#define DISABLE_DEFAULT_TOOLTIP
+	#define DISABLE_DEFAULT_TOOLTIP
 #endif
 #endif
 #if !defined(DISABLE_DEFAULT_TOOLTIP)

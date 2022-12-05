@@ -81,8 +81,7 @@ class BrowserApp : public CefApp,
 
 public:
 	inline BrowserApp(bool shared_texture_available_ = false)
-		: shared_texture_available(shared_texture_available_),
-		  media_flag(-1)
+		: shared_texture_available(shared_texture_available_), media_flag(-1)
 	{
 	}
 
@@ -114,6 +113,7 @@ public:
 			     const CefV8ValueList &arguments,
 			     CefRefPtr<CefV8Value> &retval,
 			     CefString &exception) override;
+
 
 #ifdef ENABLE_BROWSER_QT_LOOP
 	virtual void OnScheduleMessagePumpWork(int64 delay_ms) override;
