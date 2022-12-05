@@ -133,6 +133,15 @@ void BrowserSource::Destroy()
 	*p_prev_next = next;
 
 	QueueCEFTask([this]() { delete this; });
+
+	// OBS will destroy the source right after BrowserSource::Destroy() call
+	// because it is not aware of any internal BrowserSource threads.
+	// Meanwhile, there may be unfinished BrowserSource::CreateBrowser() CEF tasks
+	// which will crash on the |obs_source_showing(source)| call later.
+	// We have to null the source here to avoid the crashes.
+	// Most likely, tougher sync mechanisms are not necessary here
+	// because the issue is relatively rare.
+	source = nullptr;
 }
 
 void BrowserSource::ExecuteOnBrowser(BrowserFunc func, bool async)
