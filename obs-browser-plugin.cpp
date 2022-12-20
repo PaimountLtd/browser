@@ -812,6 +812,8 @@ bool obs_module_load(void)
 	OBSDataAutoRelease private_data = obs_get_private_data();
 	hwaccel = obs_data_get_bool(private_data, "BrowserHWAccel");
 
+	blog(LOG_WARNING, "BROWSER-DEBUG: obs_module_load, BrowserHWAccel and hwaccel is %s", hwaccel ? "true" : "false");
+
 	if (hwaccel) {
 		check_hwaccel_support();
 	}

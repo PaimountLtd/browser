@@ -688,6 +688,14 @@ void BrowserSource::Render()
 		gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
 #endif
 
+		static bool doOnce = false;
+
+		if (!doOnce)
+		{
+			blog(LOG_WARNING, "BROWSER-DEBUG: BrowserSource::Render() did a render");
+			doOnce = true;
+		}
+
 		bool linear_sample = extra_texture == NULL;
 		gs_texture_t *draw_texture = texture;
 		if (!linear_sample &&

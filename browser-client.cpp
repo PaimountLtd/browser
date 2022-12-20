@@ -310,10 +310,14 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 			    const RectList &, const void *buffer, int width,
 			    int height)
 {
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnPaint - 1");
+
 	if (type != PET_VIEW) {
 		// TODO Overlay texture on top of bs->texture
 		return;
 	}
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnPaint - 2");
 
 #ifdef ENABLE_BROWSER_SHARED_TEXTURE
 	if (sharing_available) {
@@ -321,9 +325,13 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 	}
 #endif
 
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnPaint - 3");
+
 	if (!valid()) {
 		return;
 	}
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnPaint - 4");
 
 	if (bs->width != width || bs->height != height) {
 		obs_enter_graphics();
@@ -345,6 +353,8 @@ void BrowserClient::OnPaint(CefRefPtr<CefBrowser>, PaintElementType type,
 				     width * 4, false);
 		obs_leave_graphics();
 	}
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnPaint - Done, texture is %s", bs->texture ? "not null" : "null");
 }
 
 #ifdef ENABLE_BROWSER_SHARED_TEXTURE
@@ -386,19 +396,27 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 				       PaintElementType type, const RectList &,
 				       void *shared_handle)
 {
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint - 1");
+
 	if (type != PET_VIEW) {
 		// TODO Overlay texture on top of bs->texture
 		return;
 	}
 
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint - 2");
+
 	if (!valid()) {
 		return;
 	}
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint - 3");
 
 #ifndef _WIN32
 	if (shared_handle == bs->last_handle)
 		return;
 #endif
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint - 4");
 
 	obs_enter_graphics();
 
@@ -427,6 +445,8 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 	obs_leave_graphics();
 
 	bs->last_handle = shared_handle;
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint - Done, texture is %s", bs->texture ? "not null" : "null");
 }
 
 #ifdef CEF_ON_ACCELERATED_PAINT2
@@ -434,18 +454,26 @@ void BrowserClient::OnAcceleratedPaint2(CefRefPtr<CefBrowser>,
 					PaintElementType type, const RectList &,
 					void *shared_handle, bool new_texture)
 {
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint2 - 1");
+
 	if (type != PET_VIEW) {
 		// TODO Overlay texture on top of bs->texture
 		return;
 	}
 
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint2 - 2");
+
 	if (!valid()) {
 		return;
 	}
 
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint2 - 3");
+
 	if (!new_texture) {
 		return;
 	}
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint2 - 4");
 
 	obs_enter_graphics();
 
@@ -467,6 +495,8 @@ void BrowserClient::OnAcceleratedPaint2(CefRefPtr<CefBrowser>,
 #endif
 	UpdateExtraTexture();
 	obs_leave_graphics();
+
+	blog(LOG_WARNING, "BROWSER-DEBUG: OnAcceleratedPaint2 - Done, texture is %s", bs->texture ? "not null" : "null");
 }
 #endif
 #endif
