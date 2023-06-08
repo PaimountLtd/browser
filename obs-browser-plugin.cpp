@@ -385,8 +385,14 @@ static void BrowserInit(obs_data_t *settings_obs)
 
 
 	std::string binPath = getExecutablePath();
+
+	blog(LOG_INFO, "BIN PATH BEFORE: %s", binPath.data());
+
 	binPath = binPath.substr(0, binPath.size() - strlen("/bin/obs64"));
 	binPath += "/Frameworks/Chromium\ Embedded\ Framework.framework";
+
+	blog(LOG_INFO, "BIN PATH AFTER: %s", binPath.data());
+
 	CefString(&settings.framework_dir_path) = binPath;
 #endif
 	std::string obs_locale = obs_get_locale();
