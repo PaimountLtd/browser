@@ -9,6 +9,13 @@
 #include <X11/Xlib.h>
 #endif
 
+#define MENU_ITEM_DEVTOOLS MENU_ID_CUSTOM_FIRST
+#define MENU_ITEM_MUTE MENU_ID_CUSTOM_FIRST + 1
+#define MENU_ITEM_ZOOM_IN MENU_ID_CUSTOM_FIRST + 2
+#define MENU_ITEM_ZOOM_RESET MENU_ID_CUSTOM_FIRST + 3
+#define MENU_ITEM_ZOOM_OUT MENU_ID_CUSTOM_FIRST + 4
+#define MENU_ITEM_COPY_URL MENU_ID_CUSTOM_FIRST + 5
+
 /* CefClient */
 CefRefPtr<CefLoadHandler> QCefBrowserClient::GetLoadHandler()
 {
@@ -60,11 +67,15 @@ void QCefBrowserClient::OnTitleChange(CefRefPtr<CefBrowser> browser,
 		QMetaObject::invokeMethod(widget, "titleChanged",
 					  Q_ARG(QString, qt_title));
 	} else { /* handle popup title */
+		if (title.compare("DevTools") == 0)
+			return;
+
+#if defined(_WIN32)
 		CefWindowHandle handl = browser->GetHost()->GetWindowHandle();
-#ifdef _WIN32
 		std::wstring str_title = title;
 		SetWindowTextW((HWND)handl, str_title.c_str());
 #elif defined(__linux__)
+		CefWindowHandle handl = browser->GetHost()->GetWindowHandle();
 		XStoreName(cef_get_xdisplay(), handl, title.ToString().c_str());
 #endif
 	}
@@ -218,7 +229,7 @@ bool QCefBrowserClient::OnSetFocus(CefRefPtr<CefBrowser>,
 	}
 }
 
-void QCefBrowserClient::OnBeforeContextMenu(CefRefPtr<CefBrowser>,
+void QCefBrowserClient::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
 					    CefRefPtr<CefFrame>,
 					    CefRefPtr<CefContextMenuParams>,
 					    CefRefPtr<CefMenuModel> model)
@@ -233,6 +244,23 @@ void QCefBrowserClient::OnBeforeContextMenu(CefRefPtr<CefBrowser>,
 	if (model->IsVisible(MENU_ID_PRINT)) {
 		model->Remove(MENU_ID_PRINT);
 	}
+	if (model->IsVisible(MENU_ID_VIEW_SOURCE)) {
+		model->Remove(MENU_ID_VIEW_SOURCE);
+	}
+	model->AddItem(MENU_ITEM_ZOOM_IN, obs_module_text("Zoom.In"));
+	if (browser->GetHost()->GetZoomLevel() != 0) {
+		model->AddItem(MENU_ITEM_ZOOM_RESET,
+			       obs_module_text("Zoom.Reset"));
+	}
+	model->AddItem(MENU_ITEM_ZOOM_OUT, obs_module_text("Zoom.Out"));
+	model->AddSeparator();
+	model->InsertItemAt(model->GetCount(), MENU_ITEM_COPY_URL,
+			    obs_module_text("CopyUrl"));
+	model->InsertItemAt(model->GetCount(), MENU_ITEM_DEVTOOLS,
+			    obs_module_text("Inspect"));
+	model->InsertCheckItemAt(model->GetCount(), MENU_ITEM_MUTE,
+				 QObject::tr("Mute").toUtf8().constData());
+	model->SetChecked(MENU_ITEM_MUTE, browser->GetHost()->IsAudioMuted());
 }
 
 #if defined(_WIN32)
@@ -241,12 +269,13 @@ bool QCefBrowserClient::RunContextMenu(
 	CefRefPtr<CefContextMenuParams>, CefRefPtr<CefMenuModel> model,
 	CefRefPtr<CefRunContextMenuCallback> callback)
 {
-	std::vector<std::tuple<std::string, int, bool, int>> menu_items;
+	std::vector<std::tuple<std::string, int, bool, int, bool>> menu_items;
 	menu_items.reserve(model->GetCount());
 	for (int i = 0; i < model->GetCount(); i++) {
 		menu_items.push_back(
 			{model->GetLabelAt(i), model->GetCommandIdAt(i),
-			 model->IsEnabledAt(i), model->GetTypeAt(i)});
+			 model->IsEnabledAt(i), model->GetTypeAt(i),
+			 model->IsCheckedAt(i)});
 	}
 
 	QMetaObject::invokeMethod(
@@ -257,16 +286,22 @@ bool QCefBrowserClient::RunContextMenu(
 			int command_id;
 			bool enabled;
 			int type_id;
+			bool check;
 
-			for (const std::tuple<std::string, int, bool, int>
+			for (const std::tuple<std::string, int, bool, int, bool>
 				     &menu_item : menu_items) {
-				std::tie(name, command_id, enabled, type_id) =
-					menu_item;
+				std::tie(name, command_id, enabled, type_id,
+					 check) = menu_item;
 				switch (type_id) {
+				case MENUITEMTYPE_CHECK:
 				case MENUITEMTYPE_COMMAND: {
 					QAction *item =
 						new QAction(name.c_str());
 					item->setEnabled(enabled);
+					if (type_id == MENUITEMTYPE_CHECK) {
+						item->setCheckable(true);
+						item->setChecked(check);
+					}
 					item->setProperty("cmd_id", command_id);
 					contextMenu.addAction(item);
 				} break;
@@ -289,10 +324,75 @@ bool QCefBrowserClient::RunContextMenu(
 }
 #endif
 
+bool QCefBrowserClient::OnContextMenuCommand(
+	CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame>,
+	CefRefPtr<CefContextMenuParams> params, int command_id,
+	CefContextMenuHandler::EventFlags)
+{
+	if (command_id < MENU_ID_CUSTOM_FIRST)
+		return false;
+	CefRefPtr<CefBrowserHost> host = browser->GetHost();
+	CefWindowInfo windowInfo;
+	QPoint pos;
+	QString title;
+	switch (command_id) {
+	case MENU_ITEM_DEVTOOLS:
+#if defined(_WIN32)
+		title = QString(obs_module_text("DevTools"))
+				.arg(widget->parentWidget()->windowTitle());
+		windowInfo.SetAsPopup(host->GetWindowHandle(),
+				      title.toUtf8().constData());
+#endif
+		pos = widget->mapToGlobal(QPoint(0, 0));
+		windowInfo.bounds.x = pos.x();
+		windowInfo.bounds.y = pos.y() + 30;
+		windowInfo.bounds.width = 900;
+		windowInfo.bounds.height = 700;
+		host->ShowDevTools(
+			windowInfo, host->GetClient(), CefBrowserSettings(),
+			{params.get()->GetXCoord(), params.get()->GetYCoord()});
+		return true;
+	case MENU_ITEM_MUTE:
+		host->SetAudioMuted(!host->IsAudioMuted());
+		return true;
+	case MENU_ITEM_ZOOM_IN:
+		widget->zoomPage(1);
+		return true;
+	case MENU_ITEM_ZOOM_RESET:
+		widget->zoomPage(0);
+		return true;
+	case MENU_ITEM_ZOOM_OUT:
+		widget->zoomPage(-1);
+		return true;
+	case MENU_ITEM_COPY_URL:
+		std::string url = browser->GetMainFrame()->GetURL().ToString();
+		auto saveClipboard = [url]() {
+			QClipboard *clipboard = QApplication::clipboard();
+
+			clipboard->setText(url.c_str(), QClipboard::Clipboard);
+
+			if (clipboard->supportsSelection()) {
+				clipboard->setText(url.c_str(),
+						   QClipboard::Selection);
+			}
+		};
+		QMetaObject::invokeMethod(
+			QCoreApplication::instance()->thread(), saveClipboard);
+		return true;
+		break;
+	}
+	return false;
+}
+
 void QCefBrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>,
 				  CefRefPtr<CefFrame> frame, int)
 {
-	if (frame->IsMain() && !script.empty())
+	if (!frame->IsMain())
+		return;
+
+	if (widget && !widget->script.empty())
+		frame->ExecuteJavaScript(widget->script, CefString(), 0);
+	else if (!script.empty())
 		frame->ExecuteJavaScript(script, CefString(), 0);
 }
 
@@ -303,7 +403,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 				   CefRefPtr<CefJSDialogCallback> callback,
 				   bool &)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	QString parentTitle = widget->parentWidget()->windowTitle();
 	std::string default_value = default_prompt_text;
 	QString msg_raw(message_text.ToString().c_str());
@@ -378,13 +477,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 	QMetaObject::invokeMethod(QCoreApplication::instance()->thread(),
 				  msgbox);
 	return true;
-#else
-	UNUSED_PARAMETER(dialog_type);
-	UNUSED_PARAMETER(message_text);
-	UNUSED_PARAMETER(default_prompt_text);
-	UNUSED_PARAMETER(callback);
-	return false;
-#endif
 }
 
 bool QCefBrowserClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
@@ -402,6 +494,21 @@ bool QCefBrowserClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
 #endif
 		browser->ReloadIgnoreCache();
 		return true;
+	} else if ((event.windows_key_code == 189 ||
+		    event.windows_key_code == 109) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Zoom out
+		return widget->zoomPage(-1);
+	} else if ((event.windows_key_code == 187 ||
+		    event.windows_key_code == 107) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Zoom in
+		return widget->zoomPage(1);
+	} else if ((event.windows_key_code == 48 ||
+		    event.windows_key_code == 96) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Reset zoom
+		return widget->zoomPage(0);
 	}
 	return false;
 }
