@@ -1,12 +1,9 @@
-cmake_minimum_required(VERSION 3.16...3.25)
+project(obs-browser)
 
-legacy_check()
-
-option(ENABLE_BROWSER "Enable browser source plugin (required Chromium Embedded Framework)" OFF)
-
-if(NOT ENABLE_BROWSER)
-  target_disable(obs-browser)
-  target_disable_feature(obs-browser "Browser sources are not enabled by default (set CEF_ROOT_DIR and ENABLE_BROWSER)")
+option(
+  ENABLE_BROWSER
+  "Enable building OBS with browser source plugin (required Chromium Embedded Framework)"
+  ${OS_LINUX})
 
 if(NOT ENABLE_BROWSER)
   message(STATUS "OBS:  DISABLED   obs-browser")
@@ -15,11 +12,6 @@ if(NOT ENABLE_BROWSER)
       "Browser source support is not enabled by default - please switch ENABLE_BROWSER to ON and specify CEF_ROOT_DIR to enable this functionality."
   )
   return()
-endif()
-
-if(OS_WINDOWS)
-  option(ENABLE_BROWSER_LEGACY
-         "Use legacy CEF version 3770 for browser source plugin" OFF)
 endif()
 
 if(OS_MACOS OR OS_WINDOWS)
@@ -31,18 +23,21 @@ option(ENABLE_BROWSER_PANELS "Enable Qt web browser panel support" ON)
 option(USE_UI_LOOP
        "Enable running CEF on the main UI thread alongside Qt" ${OS_MACOS})
 
-mark_as_advanced(ENABLE_BROWSER_LEGACY ENABLE_BROWSER_SHARED_TEXTURE
+mark_as_advanced(ENABLE_BROWSER_SHARED_TEXTURE
                  ENABLE_BROWSER_PANELS USE_UI_LOOP)
 
 find_package(CEF REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
+if(NOT TARGET CEF::Wrapper)
+  message(
+    FATAL_ERROR
+      "OBS:    -        Unable to find CEF Libraries - set CEF_ROOT_DIR or configure with ENABLE_BROWSER=OFF"
+  )
+endif()
+
 add_library(obs-browser MODULE)
 add_library(OBS::browser ALIAS obs-browser)
-
-if(ENABLE_BROWSER_LEGACY)
-  target_compile_definitions(obs-browser PRIVATE ENABLE_BROWSER_LEGACY)
-endif()
 
 if(ENABLE_BROWSER_SHARED_TEXTURE)
   target_compile_definitions(obs-browser PRIVATE ENABLE_BROWSER_SHARED_TEXTURE)
@@ -56,7 +51,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/browser-config.h.in
                ${CMAKE_BINARY_DIR}/config/browser-config.h)
 
 set(obs-browser_SOURCES
-  obs-browser-plugin.cpp
+	obs-browser-plugin.cpp
   obs-browser-source.cpp
   obs-browser-source.hpp
   obs-browser-source-audio.cpp
@@ -68,8 +63,6 @@ set(obs-browser_SOURCES
   browser-scheme.hpp
   browser-version.h
   cef-headers.hpp
-  deps/json11/json11.cpp
-  deps/json11/json11.hpp
   deps/base64/base64.cpp
   deps/base64/base64.hpp
   deps/wide-string.cpp
@@ -77,7 +70,6 @@ set(obs-browser_SOURCES
   deps/signal-restore.cpp
   deps/signal-restore.hpp
   deps/obs-websocket-api/obs-websocket-api.h
-  ${CMAKE_BINARY_DIR}/config/browser-config.h
 )
 
 if(APPLE)
@@ -91,7 +83,10 @@ target_sources(
   obs-browser
   PRIVATE ${obs-browser_SOURCES})
 
-target_include_directories(obs-browser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+target_include_directories(obs-browser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps
+                                               ${CMAKE_BINARY_DIR}/config)
+
+target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api nlohmann_json::nlohmann_json)
 
 target_compile_features(obs-browser PRIVATE cxx_std_17)
 
@@ -107,59 +102,24 @@ if(ENABLE_BROWSER_PANELS OR ENABLE_BROWSER_QT_LOOP)
   target_link_libraries(obs-browser PRIVATE Qt::Widgets)
 endif()
 
-if(NOT OS_MACOS OR ENABLE_BROWSER_LEGACY)
-  add_executable(obs-browser-page)
-
-  target_sources(
-    obs-browser-page
-    PRIVATE cef-headers.hpp obs-browser-page/obs-browser-page-main.cpp
-            browser-app.cpp browser-app.hpp deps/json11/json11.cpp
-            deps/json11/json11.hpp)
-
-  target_link_libraries(obs-browser-page PRIVATE CEF::Library)
-
-  target_include_directories(
-    obs-browser-page
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/deps
-            ${CMAKE_CURRENT_SOURCE_DIR}/obs-browser-page)
-
-  target_compile_features(obs-browser-page PRIVATE cxx_std_17)
-
-  if(OS_WINDOWS)
-
-    if(TARGET CEF::Wrapper_Debug)
-      target_link_libraries(obs-browser-page PRIVATE optimized CEF::Wrapper)
-      target_link_libraries(obs-browser-page PRIVATE debug CEF::Wrapper_Debug)
-    else()
-      target_link_libraries(obs-browser-page PRIVATE CEF::Wrapper)
-    endif()
-
-    target_sources(obs-browser-page PRIVATE obs-browser-page.manifest)
-  else()
-    target_link_libraries(obs-browser-page PRIVATE CEF::Wrapper)
-  endif()
-
-  if(ENABLE_BROWSER_LEGACY)
-    target_compile_definitions(obs-browser-page PRIVATE ENABLE_BROWSER_LEGACY)
-  endif()
-
-  if(ENABLE_BROWSER_SHARED_TEXTURE)
-    target_compile_definitions(obs-browser-page
-                               PRIVATE ENABLE_BROWSER_SHARED_TEXTURE)
-  endif()
-
-  if(USE_UI_LOOP)
-    target_compile_definitions(obs-browser-page PRIVATE USE_UI_LOOP)
-  endif()
-
-  set_target_properties(obs-browser-page PROPERTIES FOLDER
-                                                    "plugins/obs-browser")
-
-  setup_plugin_target(obs-browser-page)
-endif()
-
 if(OS_WINDOWS)
-  include(cmake/os-windows.cmake)
+  if(MSVC)
+    target_compile_options(obs-browser PRIVATE $<IF:$<CONFIG:DEBUG>,/MTd,/MT>)
+  endif()
+
+  target_link_libraries(obs-browser PRIVATE CEF::Library d3d11 dxgi)
+
+  if(TARGET CEF::Wrapper_Debug)
+    target_link_libraries(obs-browser PRIVATE optimized CEF::Wrapper)
+    target_link_libraries(obs-browser PRIVATE debug CEF::Wrapper_Debug)
+  else()
+    target_link_libraries(obs-browser PRIVATE CEF::Wrapper)
+  endif()
+
+  target_link_options(obs-browser PRIVATE "LINKER:/IGNORE:4099")
+
+  list(APPEND obs-browser_LIBRARIES d3d11 dxgi)
+
 elseif(OS_MACOS)
   find_library(COREFOUNDATION CoreFoundation)
   find_library(APPKIT AppKit)
@@ -254,7 +214,35 @@ elseif(OS_POSIX)
 endif()
 
 if(ENABLE_BROWSER_PANELS)
-  include(cmake/feature-panels.cmake)
+  add_library(obs-browser-panels INTERFACE)
+  add_library(OBS::browser-panels ALIAS obs-browser-panels)
+  target_sources(
+    obs-browser-panels
+    INTERFACE panel/browser-panel.cpp panel/browser-panel.hpp
+              panel/browser-panel-client.cpp panel/browser-panel-client.hpp
+              panel/browser-panel-internal.hpp)
+
+  target_include_directories(
+    obs-browser-panels INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+                                 ${CMAKE_CURRENT_SOURCE_DIR}/panel)
+
+  target_link_libraries(obs-browser-panels INTERFACE CEF::Wrapper)
+
+  if(OS_MACOS)
+    target_link_libraries(obs-browser-panels INTERFACE objc)
+  endif()
+
+  target_link_libraries(obs-browser PRIVATE obs-browser-panels)
+
+  target_compile_definitions(obs-browser-panels INTERFACE BROWSER_AVAILABLE)
+
+  if(ENABLE_BROWSER_QT_LOOP)
+    target_compile_definitions(obs-browser-panels
+                               INTERFACE ENABLE_BROWSER_QT_LOOP)
+  endif()
 endif()
 
-set_target_properties_obs(obs-browser PROPERTIES FOLDER plugins/obs-browser PREFIX "")
+set_target_properties(obs-browser PROPERTIES FOLDER "plugins/obs-browser" PREFIX
+                                                                          "")
+
+setup_plugin_target(obs-browser)
