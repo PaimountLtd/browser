@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,14 @@
 #include "browser-client.hpp"
 #include "obs-browser-source.hpp"
 #include "base64/base64.hpp"
-#include "json11/json11.hpp"
+//#include "json11/json11.hpp"
+#include <nlohmann/json.hpp>
+//#include <obs-frontend-api.h>
 #include <obs.hpp>
 #include <util/platform.h>
 #if defined(__APPLE__) && CHROME_VERSION_BUILD > 4430
 #include <IOSurface/IOSurface.h>
 #endif
-
-using namespace json11;
 
 inline bool BrowserClient::valid() const
 {
@@ -115,7 +115,7 @@ bool BrowserClient::OnProcessMessageReceived(
 {
 	const std::string &name = message->GetName();
 	CefRefPtr<CefListValue> input_args = message->GetArgumentList();
-	Json json;
+	nlohmann::json json;
 
 	if (!valid()) {
 		return false;
@@ -221,12 +221,10 @@ bool BrowserClient::OnProcessMessageReceived(
 			if (!name)
 				return false;
 
-			json = Json::object{
-				{"name", name},
-				{"width",
-				 (int)obs_source_get_width(current_scene)},
+			json = {{"name", name},
+				{"width", obs_source_get_width(current_scene)},
 				{"height",
-				 (int)obs_source_get_height(current_scene)}};
+				 obs_source_get_height(current_scene)}};
 		} else if (name == "getTransitions") {
 			struct obs_frontend_source_list list = {};
 			obs_frontend_get_transitions(&list);
@@ -246,8 +244,7 @@ bool BrowserClient::OnProcessMessageReceived(
 		[[fallthrough]];
 	case ControlLevel::ReadObs:
 		if (name == "getStatus") {
-			json = Json::object{
-				{"recording", obs_frontend_recording_active()},
+			json = {{"recording", obs_frontend_recording_active()},
 				{"streaming", obs_frontend_streaming_active()},
 				{"recordingPaused",
 				 obs_frontend_recording_paused()},
@@ -290,7 +287,6 @@ void BrowserClient::GetViewRect(CefRefPtr<CefBrowser>, CefRect &rect)
 bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 {
 #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	std::string str_text = text;
 	QMetaObject::invokeMethod(
 		QCoreApplication::instance()->thread(), [str_text]() {
@@ -298,7 +294,6 @@ bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 		});
 	return true;
 #define DISABLE_DEFAULT_TOOLTIP
-#endif
 #endif
 #if !defined(DISABLE_DEFAULT_TOOLTIP)
 	UNUSED_PARAMETER(text);
@@ -479,12 +474,16 @@ static speaker_layout GetSpeakerLayout(CefAudioHandler::ChannelLayout cefLayout)
 	case CEF_CHANNEL_LAYOUT_STEREO:
 		return SPEAKERS_STEREO; /**< Channels: FL, FR */
 	case CEF_CHANNEL_LAYOUT_2POINT1:
+	case CEF_CHANNEL_LAYOUT_2_1:
+	case CEF_CHANNEL_LAYOUT_SURROUND:
 		return SPEAKERS_2POINT1; /**< Channels: FL, FR, LFE */
 	case CEF_CHANNEL_LAYOUT_2_2:
 	case CEF_CHANNEL_LAYOUT_QUAD:
 	case CEF_CHANNEL_LAYOUT_4_0:
 		return SPEAKERS_4POINT0; /**< Channels: FL, FR, FC, RC */
 	case CEF_CHANNEL_LAYOUT_4_1:
+	case CEF_CHANNEL_LAYOUT_5_0:
+	case CEF_CHANNEL_LAYOUT_5_0_BACK:
 		return SPEAKERS_4POINT1; /**< Channels: FL, FR, FC, LFE, RC */
 	case CEF_CHANNEL_LAYOUT_5_1:
 	case CEF_CHANNEL_LAYOUT_5_1_BACK:

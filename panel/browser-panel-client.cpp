@@ -11,6 +11,10 @@
 
 #define MENU_ITEM_DEVTOOLS MENU_ID_CUSTOM_FIRST
 #define MENU_ITEM_MUTE MENU_ID_CUSTOM_FIRST + 1
+#define MENU_ITEM_ZOOM_IN MENU_ID_CUSTOM_FIRST + 2
+#define MENU_ITEM_ZOOM_RESET MENU_ID_CUSTOM_FIRST + 3
+#define MENU_ITEM_ZOOM_OUT MENU_ID_CUSTOM_FIRST + 4
+#define MENU_ITEM_COPY_URL MENU_ID_CUSTOM_FIRST + 5
 
 /* CefClient */
 CefRefPtr<CefLoadHandler> QCefBrowserClient::GetLoadHandler()
@@ -66,11 +70,12 @@ void QCefBrowserClient::OnTitleChange(CefRefPtr<CefBrowser> browser,
 		if (title.compare("DevTools") == 0)
 			return;
 
+#if defined(_WIN32)
 		CefWindowHandle handl = browser->GetHost()->GetWindowHandle();
-#ifdef _WIN32
 		std::wstring str_title = title;
 		SetWindowTextW((HWND)handl, str_title.c_str());
 #elif defined(__linux__)
+		CefWindowHandle handl = browser->GetHost()->GetWindowHandle();
 		XStoreName(cef_get_xdisplay(), handl, title.ToString().c_str());
 #endif
 	}
@@ -242,7 +247,15 @@ void QCefBrowserClient::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
 	if (model->IsVisible(MENU_ID_VIEW_SOURCE)) {
 		model->Remove(MENU_ID_VIEW_SOURCE);
 	}
+	model->AddItem(MENU_ITEM_ZOOM_IN, obs_module_text("Zoom.In"));
+	if (browser->GetHost()->GetZoomLevel() != 0) {
+		model->AddItem(MENU_ITEM_ZOOM_RESET,
+			       obs_module_text("Zoom.Reset"));
+	}
+	model->AddItem(MENU_ITEM_ZOOM_OUT, obs_module_text("Zoom.Out"));
 	model->AddSeparator();
+	model->InsertItemAt(model->GetCount(), MENU_ITEM_COPY_URL,
+			    obs_module_text("CopyUrl"));
 	model->InsertItemAt(model->GetCount(), MENU_ITEM_DEVTOOLS,
 			    obs_module_text("Inspect"));
 	model->InsertCheckItemAt(model->GetCount(), MENU_ITEM_MUTE,
@@ -342,6 +355,31 @@ bool QCefBrowserClient::OnContextMenuCommand(
 	case MENU_ITEM_MUTE:
 		host->SetAudioMuted(!host->IsAudioMuted());
 		return true;
+	case MENU_ITEM_ZOOM_IN:
+		widget->zoomPage(1);
+		return true;
+	case MENU_ITEM_ZOOM_RESET:
+		widget->zoomPage(0);
+		return true;
+	case MENU_ITEM_ZOOM_OUT:
+		widget->zoomPage(-1);
+		return true;
+	case MENU_ITEM_COPY_URL:
+		std::string url = browser->GetMainFrame()->GetURL().ToString();
+		auto saveClipboard = [url]() {
+			QClipboard *clipboard = QApplication::clipboard();
+
+			clipboard->setText(url.c_str(), QClipboard::Clipboard);
+
+			if (clipboard->supportsSelection()) {
+				clipboard->setText(url.c_str(),
+						   QClipboard::Selection);
+			}
+		};
+		QMetaObject::invokeMethod(
+			QCoreApplication::instance()->thread(), saveClipboard);
+		return true;
+		break;
 	}
 	return false;
 }
@@ -349,7 +387,12 @@ bool QCefBrowserClient::OnContextMenuCommand(
 void QCefBrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>,
 				  CefRefPtr<CefFrame> frame, int)
 {
-	if (frame->IsMain() && !script.empty())
+	if (!frame->IsMain())
+		return;
+
+	if (widget && !widget->script.empty())
+		frame->ExecuteJavaScript(widget->script, CefString(), 0);
+	else if (!script.empty())
 		frame->ExecuteJavaScript(script, CefString(), 0);
 }
 
@@ -360,7 +403,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 				   CefRefPtr<CefJSDialogCallback> callback,
 				   bool &)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	QString parentTitle = widget->parentWidget()->windowTitle();
 	std::string default_value = default_prompt_text;
 	QString msg_raw(message_text.ToString().c_str());
@@ -435,13 +477,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 	QMetaObject::invokeMethod(QCoreApplication::instance()->thread(),
 				  msgbox);
 	return true;
-#else
-	UNUSED_PARAMETER(dialog_type);
-	UNUSED_PARAMETER(message_text);
-	UNUSED_PARAMETER(default_prompt_text);
-	UNUSED_PARAMETER(callback);
-	return false;
-#endif
 }
 
 bool QCefBrowserClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
@@ -459,6 +494,21 @@ bool QCefBrowserClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
 #endif
 		browser->ReloadIgnoreCache();
 		return true;
+	} else if ((event.windows_key_code == 189 ||
+		    event.windows_key_code == 109) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Zoom out
+		return widget->zoomPage(-1);
+	} else if ((event.windows_key_code == 187 ||
+		    event.windows_key_code == 107) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Zoom in
+		return widget->zoomPage(1);
+	} else if ((event.windows_key_code == 48 ||
+		    event.windows_key_code == 96) &&
+		   (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0) {
+		// Reset zoom
+		return widget->zoomPage(0);
 	}
 	return false;
 }
