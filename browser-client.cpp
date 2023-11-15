@@ -297,7 +297,7 @@ bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 			QToolTip::showText(QCursor::pos(), str_text.c_str());
 		});
 	return true;
-	#define DISABLE_DEFAULT_TOOLTIP
+#define DISABLE_DEFAULT_TOOLTIP
 #endif
 #endif
 #if !defined(DISABLE_DEFAULT_TOOLTIP)
@@ -682,18 +682,26 @@ bool BrowserClient::OnConsoleMessage(CefRefPtr<CefBrowser>,
 				     const CefString &source, int line)
 {
 	int errorLevel = LOG_INFO;
+	const char *code = "Info";
 	switch (level) {
 	case LOGSEVERITY_ERROR:
 		errorLevel = LOG_WARNING;
+		code = "Error";
 		break;
 	case LOGSEVERITY_FATAL:
 		errorLevel = LOG_ERROR;
+		code = "Fatal";
 		break;
 	default:
 		return false;
 	}
 
-	blog(errorLevel, "obs-browser: %s (source: %s:%d)",
+	const char *sourceName = "<unknown>";
+
+	if (bs && bs->source)
+		sourceName = obs_source_get_name(bs->source);
+
+	blog(errorLevel, "[obs-browser: '%s'] %s: %s (%s:%d)", sourceName, code,
 	     message.ToString().c_str(), source.ToString().c_str(), line);
 	return false;
 }

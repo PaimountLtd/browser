@@ -65,10 +65,10 @@ void BrowserApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar
 					   CEF_SCHEME_OPTION_CORS_ENABLED);
 }
 
-void BrowserApp::AddFlag(bool flag) 
+void BrowserApp::AddFlag(bool flag)
 {
-    std::lock_guard<std::mutex> guard(flag_mutex);
-    this->media_flags.push(flag);
+	std::lock_guard<std::mutex> guard(flag_mutex);
+	this->media_flags.push(flag);
 }
 
 void BrowserApp::OnBeforeChildProcessLaunch(
@@ -80,20 +80,21 @@ void BrowserApp::OnBeforeChildProcessLaunch(
 #else
 #endif
 
-    std::lock_guard<std::mutex> guard(flag_mutex);
-    if (this->media_flag != -1) {
-        if (this->media_flag) {
-            command_line->AppendSwitchWithValue("enable-media-stream", "1");
-        }
-        this->media_flag = -1;
-    }
-    else if (this->media_flags.size()) {
-        bool flag = media_flags.front();
-        media_flags.pop();
-        if (flag) {
-            command_line->AppendSwitchWithValue("enable-media-stream", "1");
-        }
-    }
+	std::lock_guard<std::mutex> guard(flag_mutex);
+	if (this->media_flag != -1) {
+		if (this->media_flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
+		this->media_flag = -1;
+	} else if (this->media_flags.size()) {
+		bool flag = media_flags.front();
+		media_flags.pop();
+		if (flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
+	}
 }
 
 void BrowserApp::OnBeforeCommandLineProcessing(
@@ -125,16 +126,18 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 
 	std::lock_guard<std::mutex> guard(flag_mutex);
 	if (this->media_flag != -1) {
-			if (this->media_flag) {
-					command_line->AppendSwitchWithValue("enable-media-stream", "1");
-			}
-			this->media_flag = -1;
+		if (this->media_flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
+		this->media_flag = -1;
 	} else if (this->media_flags.size()) {
-			bool flag = media_flags.front();
-			media_flags.pop();
-			if (flag) {
-				command_line->AppendSwitchWithValue("enable-media-stream", "1");
-			}
+		bool flag = media_flags.front();
+		media_flags.pop();
+		if (flag) {
+			command_line->AppendSwitchWithValue(
+				"enable-media-stream", "1");
+		}
 	}
 #ifdef __APPLE__
 	command_line->AppendSwitch("use-mock-keychain");
