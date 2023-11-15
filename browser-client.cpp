@@ -293,7 +293,7 @@ bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 			QToolTip::showText(QCursor::pos(), str_text.c_str());
 		});
 	return true;
-	#define DISABLE_DEFAULT_TOOLTIP
+#define DISABLE_DEFAULT_TOOLTIP
 #endif
 #if !defined(DISABLE_DEFAULT_TOOLTIP)
 	UNUSED_PARAMETER(text);
