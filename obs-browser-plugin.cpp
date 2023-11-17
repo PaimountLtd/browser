@@ -170,6 +170,7 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 static bool is_mediaflag_modified(obs_properties_t *props, obs_property_t *,
 				  obs_data_t *settings)
 {
+	UNUSED_PARAMETER(props);
 	bool enabled = obs_data_get_bool(settings, "is_media_flag");
 	return true;
 }
@@ -398,7 +399,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		binPath = binPath.substr(0,
 					 binPath.size() - strlen("/bin/obs64"));
 		binPath +=
-			"/Frameworks/Chromium\ Embedded\ Framework.framework";
+			"/Frameworks/Chromium Embedded Framework.framework";
 		CefString(&settings.framework_dir_path) = binPath;
 #endif
 		std::string obs_locale = obs_get_locale();
