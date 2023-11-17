@@ -62,7 +62,7 @@ void ExecuteSyncTask(MessageTask task)
     });
 }
 
-void DoCefMessageLoop(int ms)
+void DoCefMessageLoop(int)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
 		CefDoMessageLoopWork();
