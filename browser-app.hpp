@@ -117,9 +117,7 @@ public:
 
 #ifdef ENABLE_BROWSER_QT_LOOP
 	virtual void OnScheduleMessagePumpWork(int64 delay_ms) override;
-#ifdef WIN32
 	QTimer frameTimer;
-#endif
 #endif
 
 #if !ENABLE_WASHIDDEN
