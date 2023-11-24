@@ -49,7 +49,7 @@
 #include <obs-frontend-api.h>
 #endif
 
-#if defined(USE_UI_LOOP) && defined(__APPLE__)
+#if defined(__APPLE__)
 #include "browser-mac.h"
 #endif
 
