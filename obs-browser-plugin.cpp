@@ -396,8 +396,6 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 
 #if defined(__APPLE__)
-		blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
-
 		std::string binPath = getExecutablePath();
 		binPath = binPath.substr(0,
 					 binPath.size() - strlen("/bin/obs64"));
