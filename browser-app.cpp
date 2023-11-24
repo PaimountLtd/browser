@@ -505,9 +505,7 @@ void ProcessCef()
 	QMetaObject::invokeMethod(&messageObject, "DoCefMessageLoop",
 				  Qt::QueuedConnection, Q_ARG(int, (int)0));
 }
-#endif
 
-#ifdef ENABLE_BROWSER_QT_LOOP
 #define MAX_DELAY (1000 / 30)
 
 void BrowserApp::OnScheduleMessagePumpWork(int64 delay_ms)
@@ -516,8 +514,6 @@ void BrowserApp::OnScheduleMessagePumpWork(int64 delay_ms)
 		delay_ms = 0;
 	else if (delay_ms > MAX_DELAY)
 		delay_ms = MAX_DELAY;
-
-#ifdef WIN32
 
 	if (!frameTimer.isActive()) {
 		QObject::connect(&frameTimer, &QTimer::timeout, &messageObject,
@@ -529,8 +525,5 @@ void BrowserApp::OnScheduleMessagePumpWork(int64 delay_ms)
 	QMetaObject::invokeMethod(&messageObject, "DoCefMessageLoop",
 				  Qt::QueuedConnection,
 				  Q_ARG(int, (int)delay_ms));
-#elif __APPLE__
-	DoCefMessageLoop((int)delay_ms);
-#endif
 }
 #endif
