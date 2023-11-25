@@ -16,7 +16,7 @@
 
 ******************************************************************************/
 
-#include <obs.h>
+#include <obs.hpp>
 #include "browser-mac.h"
 #include <mach-o/dyld.h>
 #include <sys/types.h>
