@@ -32,7 +32,7 @@ foreach(helper IN LISTS helper_suffixes)
   add_executable(OBS::${target_name} ALIAS ${target_name})
 
   target_sources(${target_name} PRIVATE browser-app.cpp browser-app.hpp obs-browser-page/obs-browser-page-main.cpp
-                                        browser-mac.mm browser-mac-cpp-int.cpp browser-mac.hpp obs-browser-objc-int.hpp browser-mac-cpp-int.hpp 
+                                        browser-mac.mm  browser-mac.h 
                                         cef-headers.hpp deps/json11/json11.cpp deps/json11/json11.hpp)
   target_compile_definitions(${target_name} PRIVATE ENABLE_BROWSER_SHARED_TEXTURE)
   if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 14.0.3)
