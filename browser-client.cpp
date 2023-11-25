@@ -262,6 +262,8 @@ bool BrowserClient::OnProcessMessageReceived(
 			json = (int)webpage_control_level;
 		}
 	}
+#else
+	UNUSED_PARAMETER(name);
 #endif
 
 	CefRefPtr<CefProcessMessage> msg =

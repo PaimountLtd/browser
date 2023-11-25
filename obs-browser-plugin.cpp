@@ -495,7 +495,7 @@ static void BrowserShutdown(void)
 	app = nullptr;
 }
 
-#ifndef USE_UI_LOOP
+#ifndef ENABLE_BROWSER_QT_LOOP
 static void BrowserManagerThread(obs_data_t *settings)
 {
 	BrowserInit(settings);
@@ -507,7 +507,7 @@ static void BrowserManagerThread(obs_data_t *settings)
 extern "C" EXPORT void obs_browser_initialize(obs_data_t *settings)
 {
 	if (!os_atomic_set_bool(&manager_initialized, true)) {
-#ifdef USE_UI_LOOP
+#ifdef ENABLE_BROWSER_QT_LOOP
 		BrowserInit(settings);
 #else
 		auto binded_fn = bind(BrowserManagerThread, settings);
