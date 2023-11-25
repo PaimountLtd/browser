@@ -16,7 +16,7 @@
 
 ******************************************************************************/
 
-#include <obs.hpp>
+#include <obs-module.h>
 #include "browser-mac.h"
 #include <mach-o/dyld.h>
 #include <sys/types.h>
@@ -24,8 +24,6 @@
 
 #import "Foundation/Foundation.h"
 #import <Cocoa/Cocoa.h>
-
-#include "obs.h"
 
 std::mutex browserTaskMutex;
 std::deque<Task> browserTasks;
