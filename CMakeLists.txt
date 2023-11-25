@@ -28,6 +28,8 @@ target_sources(
           browser-app.cpp
           browser-app.hpp
           browser-client.cpp
+          browser-mac.mm
+          browser-mac.h
           browser-client.hpp
           browser-scheme.cpp
           browser-scheme.hpp
