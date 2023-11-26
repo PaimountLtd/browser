@@ -74,6 +74,7 @@ void Process()
     });
 }
 
+#if 0 // REMOVE_DUPLICATE
 void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func)
 {
 	std::lock_guard<std::mutex> lock(browserTaskMutex);
@@ -83,6 +84,7 @@ void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func)
         ExecuteNextBrowserTask();
     });
 }
+#endif
 
 bool isMainThread()
 {
