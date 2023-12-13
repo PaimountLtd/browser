@@ -22,7 +22,6 @@
 #include "wide-string.hpp"
 #include "json11/json11.hpp"
 #include <util/threading.h>
-#include <QApplication>
 #include <util/dstr.h>
 #include <functional>
 #include <thread>
@@ -33,6 +32,7 @@
 #endif
 
 #ifdef ENABLE_BROWSER_QT_LOOP
+#include <QApplication>
 #include <QEventLoop>
 #include <QThread>
 #include "browser-mac.h"
