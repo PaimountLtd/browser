@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,14 @@
 #include "browser-client.hpp"
 #include "obs-browser-source.hpp"
 #include "base64/base64.hpp"
-#include "json11/json11.hpp"
+//#include "json11/json11.hpp"
+#include <nlohmann/json.hpp>
+//#include <obs-frontend-api.h>
 #include <obs.hpp>
 #include <util/platform.h>
 #if defined(__APPLE__) && CHROME_VERSION_BUILD > 4430
 #include <IOSurface/IOSurface.h>
 #endif
-
-using namespace json11;
 
 inline bool BrowserClient::valid() const
 {
@@ -115,7 +115,7 @@ bool BrowserClient::OnProcessMessageReceived(
 {
 	const std::string &name = message->GetName();
 	CefRefPtr<CefListValue> input_args = message->GetArgumentList();
-	Json json;
+	nlohmann::json json;
 
 	if (!valid()) {
 		return false;
@@ -221,12 +221,10 @@ bool BrowserClient::OnProcessMessageReceived(
 			if (!name)
 				return false;
 
-			json = Json::object{
-				{"name", name},
-				{"width",
-				 (int)obs_source_get_width(current_scene)},
+			json = {{"name", name},
+				{"width", obs_source_get_width(current_scene)},
 				{"height",
-				 (int)obs_source_get_height(current_scene)}};
+				 obs_source_get_height(current_scene)}};
 		} else if (name == "getTransitions") {
 			struct obs_frontend_source_list list = {};
 			obs_frontend_get_transitions(&list);
@@ -246,8 +244,7 @@ bool BrowserClient::OnProcessMessageReceived(
 		[[fallthrough]];
 	case ControlLevel::ReadObs:
 		if (name == "getStatus") {
-			json = Json::object{
-				{"recording", obs_frontend_recording_active()},
+			json = {{"recording", obs_frontend_recording_active()},
 				{"streaming", obs_frontend_streaming_active()},
 				{"recordingPaused",
 				 obs_frontend_recording_paused()},
@@ -292,7 +289,6 @@ void BrowserClient::GetViewRect(CefRefPtr<CefBrowser>, CefRect &rect)
 bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 {
 #if BROWSER_FRONTEND_API_SUPPORT_ENABLED
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	std::string str_text = text;
 	QMetaObject::invokeMethod(
 		QCoreApplication::instance()->thread(), [str_text]() {
@@ -300,7 +296,6 @@ bool BrowserClient::OnTooltip(CefRefPtr<CefBrowser>, CefString &text)
 		});
 	return true;
 #define DISABLE_DEFAULT_TOOLTIP
-#endif
 #endif
 #if !defined(DISABLE_DEFAULT_TOOLTIP)
 	UNUSED_PARAMETER(text);

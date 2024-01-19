@@ -398,7 +398,12 @@ bool QCefBrowserClient::OnContextMenuCommand(
 void QCefBrowserClient::OnLoadEnd(CefRefPtr<CefBrowser>,
 				  CefRefPtr<CefFrame> frame, int)
 {
-	if (frame->IsMain() && !script.empty())
+	if (!frame->IsMain())
+		return;
+
+	if (widget && !widget->script.empty())
+		frame->ExecuteJavaScript(widget->script, CefString(), 0);
+	else if (!script.empty())
 		frame->ExecuteJavaScript(script, CefString(), 0);
 }
 
@@ -409,7 +414,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 				   CefRefPtr<CefJSDialogCallback> callback,
 				   bool &)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 	QString parentTitle = widget->parentWidget()->windowTitle();
 	std::string default_value = default_prompt_text;
 	QString msg_raw(message_text.ToString().c_str());
@@ -484,13 +488,6 @@ bool QCefBrowserClient::OnJSDialog(CefRefPtr<CefBrowser>, const CefString &,
 	QMetaObject::invokeMethod(QCoreApplication::instance()->thread(),
 				  msgbox);
 	return true;
-#else
-	UNUSED_PARAMETER(dialog_type);
-	UNUSED_PARAMETER(message_text);
-	UNUSED_PARAMETER(default_prompt_text);
-	UNUSED_PARAMETER(callback);
-	return false;
-#endif
 }
 
 bool QCefBrowserClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,

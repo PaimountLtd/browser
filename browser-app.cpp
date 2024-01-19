@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,10 @@
 
 #include "browser-app.hpp"
 #include "browser-version.h"
-#include <json11/json11.hpp>
+//#include <json11/json11.hpp>
 #include <iostream>
 #include <mutex>
+#include <nlohmann/json.hpp>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -45,8 +46,6 @@
 		(void)x;    \
 	}
 #endif
-
-using namespace json11;
 
 CefRefPtr<CefRenderProcessHandler> BrowserApp::GetRenderProcessHandler()
 {
@@ -114,10 +113,12 @@ void BrowserApp::OnBeforeCommandLineProcessing(
 		std::string disableFeatures =
 			command_line->GetSwitchValue("disable-features");
 		disableFeatures += ",HardwareMediaKeyHandling";
+		disableFeatures += ",WebBluetooth";
 		command_line->AppendSwitchWithValue("disable-features",
 						    disableFeatures);
 	} else {
 		command_line->AppendSwitchWithValue("disable-features",
+						    "WebBluetooth,"
 						    "HardwareMediaKeyHandling");
 	}
 
@@ -189,19 +190,25 @@ void BrowserApp::ExecuteJSFunction(CefRefPtr<CefBrowser> browser,
 				   const char *functionName,
 				   CefV8ValueList arguments)
 {
-	CefRefPtr<CefV8Context> context =
-		browser->GetMainFrame()->GetV8Context();
+	std::vector<CefString> names;
+	browser->GetFrameNames(names);
+	for (auto &name : names) {
+		CefRefPtr<CefFrame> frame = browser->GetFrame(name);
+		CefRefPtr<CefV8Context> context = frame->GetV8Context();
 
-	context->Enter();
+		context->Enter();
 
-	CefRefPtr<CefV8Value> globalObj = context->GetGlobal();
-	CefRefPtr<CefV8Value> obsStudioObj = globalObj->GetValue("obsstudio");
-	CefRefPtr<CefV8Value> jsFunction = obsStudioObj->GetValue(functionName);
+		CefRefPtr<CefV8Value> globalObj = context->GetGlobal();
+		CefRefPtr<CefV8Value> obsStudioObj =
+			globalObj->GetValue("obsstudio");
+		CefRefPtr<CefV8Value> jsFunction =
+			obsStudioObj->GetValue(functionName);
 
-	if (jsFunction && jsFunction->IsFunction())
-		jsFunction->ExecuteFunction(nullptr, arguments);
+		if (jsFunction && jsFunction->IsFunction())
+			jsFunction->ExecuteFunction(nullptr, arguments);
 
-	context->Exit();
+		context->Exit();
+	}
 }
 
 #if !ENABLE_WASHIDDEN
@@ -317,21 +324,13 @@ bool BrowserApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 		ExecuteJSFunction(browser, "onActiveChange", arguments);
 
 	} else if (message->GetName() == "DispatchJSEvent") {
-		CefRefPtr<CefV8Context> context =
-			browser->GetMainFrame()->GetV8Context();
+		nlohmann::json payloadJson = nlohmann::json::parse(
+			args->GetString(1).ToString(), nullptr, false);
 
-		context->Enter();
-
-		CefRefPtr<CefV8Value> globalObj = context->GetGlobal();
-
-		std::string err;
-		auto payloadJson =
-			Json::parse(args->GetString(1).ToString(), err);
-
-		Json::object wrapperJson;
+		nlohmann::json wrapperJson;
 		if (args->GetSize() > 1)
 			wrapperJson["detail"] = payloadJson;
-		std::string wrapperJsonString = Json(wrapperJson).dump();
+		std::string wrapperJsonString = wrapperJson.dump();
 		std::string script;
 
 		script += "new CustomEvent('";
@@ -340,22 +339,33 @@ bool BrowserApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 		script += wrapperJsonString;
 		script += ");";
 
-		CefRefPtr<CefV8Value> returnValue;
-		CefRefPtr<CefV8Exception> exception;
+		std::vector<CefString> names;
+		browser->GetFrameNames(names);
+		for (auto &name : names) {
+			CefRefPtr<CefFrame> frame = browser->GetFrame(name);
+			CefRefPtr<CefV8Context> context = frame->GetV8Context();
 
-		/* Create the CustomEvent object
-		 * We have to use eval to invoke the new operator */
-		context->Eval(script, browser->GetMainFrame()->GetURL(), 0,
-			      returnValue, exception);
+			context->Enter();
 
-		CefV8ValueList arguments;
-		arguments.push_back(returnValue);
+			CefRefPtr<CefV8Value> globalObj = context->GetGlobal();
 
-		CefRefPtr<CefV8Value> dispatchEvent =
-			globalObj->GetValue("dispatchEvent");
-		dispatchEvent->ExecuteFunction(nullptr, arguments);
+			CefRefPtr<CefV8Value> returnValue;
+			CefRefPtr<CefV8Exception> exception;
 
-		context->Exit();
+			/* Create the CustomEvent object
+			* We have to use eval to invoke the new operator */
+			context->Eval(script, browser->GetMainFrame()->GetURL(),
+				      0, returnValue, exception);
+
+			CefV8ValueList arguments;
+			arguments.push_back(returnValue);
+
+			CefRefPtr<CefV8Value> dispatchEvent =
+				globalObj->GetValue("dispatchEvent");
+			dispatchEvent->ExecuteFunction(nullptr, arguments);
+
+			context->Exit();
+		}
 
 	} else if (message->GetName() == "executeCallback") {
 		CefRefPtr<CefV8Context> context =

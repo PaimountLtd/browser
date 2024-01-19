@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #include "browser-client.hpp"
 #include "browser-scheme.hpp"
 #include "wide-string.hpp"
-#include "json11/json11.hpp"
+#include <nlohmann/json.hpp>
 #include <util/threading.h>
 #include <util/dstr.h>
 #include <functional>
@@ -39,7 +39,6 @@
 #endif
 
 using namespace std;
-using namespace json11;
 
 extern bool QueueCEFTask(std::function<void()> task);
 

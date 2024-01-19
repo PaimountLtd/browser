@@ -449,6 +449,16 @@ void QCefWidgetInternal::setStartupScript(const std::string &script_)
 	script = script_;
 }
 
+void QCefWidgetInternal::executeJavaScript(const std::string &script_)
+{
+	if (!cefBrowser)
+		return;
+
+	CefRefPtr<CefFrame> frame = cefBrowser->GetMainFrame();
+	std::string url = frame->GetURL();
+	frame->ExecuteJavaScript(script_, url, 0);
+}
+
 void QCefWidgetInternal::allowAllPopups(bool allow)
 {
 	allowAllPopups_ = allow;
@@ -585,7 +595,7 @@ extern "C" EXPORT QCef *obs_browser_create_qcef(void)
 	return new QCefInternal();
 }
 
-#define BROWSER_PANEL_VERSION 2
+#define BROWSER_PANEL_VERSION 3
 
 extern "C" EXPORT int obs_browser_qcef_version_export(void)
 {
