@@ -45,7 +45,9 @@ void ExecuteTask(MessageTask task);
 void ExecuteSyncTask(MessageTask task);
 void DoCefMessageLoop(int ms);
 void Process();
+#if 0 // REMOVE_DUPLICATE
 void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func);
+#endif // REMOVE_DUPLICATE
 bool isMainThread();
 std::string getExecutablePath();
 bool isHighThanBigSur();

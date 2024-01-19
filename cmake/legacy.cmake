@@ -3,7 +3,7 @@ project(obs-browser)
 option(ENABLE_BROWSER "Enable building OBS with browser source plugin (required Chromium Embedded Framework)"
        ${OS_LINUX})
 
-if(NOT ENABLE_BROWSER OR NOT ENABLE_UI)
+if(NOT ENABLE_BROWSER)
   message(STATUS "OBS:  DISABLED   obs-browser")
   message(
     WARNING
@@ -31,8 +31,6 @@ if(NOT TARGET CEF::Wrapper)
   message(
     FATAL_ERROR "OBS:    -        Unable to find CEF Libraries - set CEF_ROOT_DIR or configure with ENABLE_BROWSER=OFF")
 endif()
-
-find_package(nlohmann_json REQUIRED)
 
 add_library(obs-browser MODULE)
 add_library(OBS::browser ALIAS obs-browser)
@@ -65,6 +63,8 @@ target_sources(
           browser-scheme.hpp
           browser-version.h
           cef-headers.hpp
+          deps/json11/json11.cpp
+          deps/json11/json11.hpp
           deps/base64/base64.cpp
           deps/base64/base64.hpp
           deps/wide-string.cpp
@@ -76,7 +76,7 @@ target_sources(
 
 target_include_directories(obs-browser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps ${CMAKE_BINARY_DIR}/config)
 
-target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api nlohmann_json::nlohmann_json)
+target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api)
 
 target_compile_features(obs-browser PRIVATE cxx_std_17)
 
@@ -96,9 +96,9 @@ if(NOT OS_MACOS OR ENABLE_BROWSER_LEGACY)
   add_executable(obs-browser-page)
 
   target_sources(obs-browser-page PRIVATE cef-headers.hpp obs-browser-page/obs-browser-page-main.cpp browser-app.cpp
-                                          browser-app.hpp)
+                                          browser-app.hpp deps/json11/json11.cpp deps/json11/json11.hpp)
 
-  target_link_libraries(obs-browser-page PRIVATE CEF::Library nlohmann_json::nlohmann_json)
+  target_link_libraries(obs-browser-page PRIVATE CEF::Library)
 
   target_include_directories(obs-browser-page PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/deps
                                                       ${CMAKE_CURRENT_SOURCE_DIR}/obs-browser-page)
@@ -165,8 +165,6 @@ elseif(OS_MACOS)
 
   target_link_libraries(obs-browser PRIVATE ${COREFOUNDATION} ${APPKIT} CEF::Wrapper)
 
-  target_sources(obs-browser PRIVATE macutil.mm)
-
   set(CEF_HELPER_TARGET "obs-browser-helper")
   set(CEF_HELPER_OUTPUT_NAME "OBS Helper")
   set(CEF_HELPER_APP_SUFFIXES "::" " (GPU):_gpu:.gpu" " (Plugin):_plugin:.plugin" " (Renderer):_renderer:.renderer")
@@ -194,9 +192,9 @@ elseif(OS_MACOS)
     add_executable(${_HELPER_TARGET} MACOSX_BUNDLE)
     add_executable(OBS::browser-helper${_TARGET_SUFFIX} ALIAS ${_HELPER_TARGET})
     target_sources(${_HELPER_TARGET} PRIVATE browser-app.cpp browser-app.hpp obs-browser-page/obs-browser-page-main.cpp
-                                             cef-headers.hpp)
+                                             cef-headers.hpp deps/json11/json11.cpp deps/json11/json11.hpp)
 
-    target_link_libraries(${_HELPER_TARGET} PRIVATE CEF::Wrapper nlohmann_json::nlohmann_json)
+    target_link_libraries(${_HELPER_TARGET} PRIVATE CEF::Wrapper)
 
     target_include_directories(${_HELPER_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/deps
                                                          ${CMAKE_CURRENT_SOURCE_DIR}/obs-browser-page)

@@ -1,6 +1,17 @@
 #include "browser-panel-client.hpp"
 #include <util/dstr.h>
 
+#include <QUrl>
+#include <QDesktopServices>
+#include <QApplication>
+#include <QMenu>
+#include <QThread>
+#include <QMessageBox>
+#include <QInputDialog>
+#include <QRegularExpression>
+#include <QLabel>
+#include <QClipboard>
+
 #include <obs-module.h>
 #ifdef _WIN32
 #include <windows.h>

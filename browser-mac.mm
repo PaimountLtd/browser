@@ -16,7 +16,7 @@
 
 ******************************************************************************/
 
-#include <obs.h>
+#include <obs-module.h>
 #include "browser-mac.h"
 #include <mach-o/dyld.h>
 #include <sys/types.h>
@@ -24,8 +24,6 @@
 
 #import "Foundation/Foundation.h"
 #import <Cocoa/Cocoa.h>
-
-#include "obs.h"
 
 std::mutex browserTaskMutex;
 std::deque<Task> browserTasks;
@@ -62,7 +60,7 @@ void ExecuteSyncTask(MessageTask task)
     });
 }
 
-void DoCefMessageLoop(int ms)
+void DoCefMessageLoop(int)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
 		CefDoMessageLoopWork();
@@ -76,6 +74,7 @@ void Process()
     });
 }
 
+#if 0 // REMOVE_DUPLICATE
 void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func)
 {
 	std::lock_guard<std::mutex> lock(browserTaskMutex);
@@ -85,6 +84,7 @@ void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func)
         ExecuteNextBrowserTask();
     });
 }
+#endif
 
 bool isMainThread()
 {

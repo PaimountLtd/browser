@@ -53,7 +53,6 @@ public:
 	virtual void closeBrowser() override;
 	virtual void reloadPage() override;
 	virtual bool zoomPage(int direction) override;
-	virtual void executeJavaScript(const std::string &script) override;
 
 	void Resize();
 

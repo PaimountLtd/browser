@@ -49,7 +49,7 @@
 #include <obs-frontend-api.h>
 #endif
 
-#if defined(USE_UI_LOOP) && defined(__APPLE__)
+#if defined(__APPLE__)
 #include "browser-mac.h"
 #endif
 
@@ -168,7 +168,9 @@ static bool is_local_file_modified(obs_properties_t *props, obs_property_t *,
 static bool is_mediaflag_modified(obs_properties_t *props, obs_property_t *,
 				  obs_data_t *settings)
 {
+	UNUSED_PARAMETER(props);
 	bool enabled = obs_data_get_bool(settings, "is_media_flag");
+	UNUSED_PARAMETER(enabled);
 	return true;
 }
 
@@ -220,7 +222,7 @@ static obs_properties_t *browser_source_get_properties(void *data)
 			       8192, 1);
 
 	obs_properties_add_bool(props, "reroute_audio",
-				obs_module_text("RerouteAudioStreamlabs"));
+				obs_module_text("RerouteAudio"));
 
 	obs_property_t *fps_set = obs_properties_add_bool(
 		props, "fps_custom", obs_module_text("CustomFrameRate"));
@@ -324,6 +326,7 @@ static CefRefPtr<BrowserApp> app;
 
 static void BrowserInit(obs_data_t *settings_obs)
 {
+	UNUSED_PARAMETER(settings_obs);
 #if defined(__APPLE__) && defined(USE_UI_LOOP)
 	ExecuteTask([settings_obs]() {
 #endif
@@ -391,13 +394,11 @@ static void BrowserInit(obs_data_t *settings_obs)
 #endif
 
 #if defined(__APPLE__)
-		blog(LOG_INFO, "CEF_LIBRARY %s", CEF_LIBRARY);
-
 		std::string binPath = getExecutablePath();
 		binPath = binPath.substr(0,
 					 binPath.size() - strlen("/bin/obs64"));
 		binPath +=
-			"/Frameworks/Chromium\ Embedded\ Framework.framework";
+			"/Frameworks/Chromium Embedded Framework.framework";
 		CefString(&settings.framework_dir_path) = binPath;
 #endif
 		std::string obs_locale = obs_get_locale();
@@ -410,11 +411,11 @@ static void BrowserInit(obs_data_t *settings_obs)
 			accepted_languages = "en-US,en";
 		}
 
-	BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
-	CefString(&settings.locale) = obs_get_locale();
-	CefString(&settings.accept_language_list) = accepted_languages;
+		BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
+		CefString(&settings.locale) = obs_get_locale();
+		CefString(&settings.accept_language_list) = accepted_languages;
 	settings.persist_user_preferences = 1;
-	CefString(&settings.cache_path) = conf_path_abs;
+		CefString(&settings.cache_path) = conf_path_abs;
 #if !defined(__APPLE__) || defined(ENABLE_BROWSER_LEGACY)
 		char *abs_path = os_get_abs_path_ptr(path.c_str());
 		CefString(&settings.browser_subprocess_path) = abs_path;
@@ -490,7 +491,7 @@ static void BrowserShutdown(void)
 	app = nullptr;
 }
 
-#ifndef USE_UI_LOOP
+#ifndef ENABLE_BROWSER_QT_LOOP
 static void BrowserManagerThread(obs_data_t *settings)
 {
 	BrowserInit(settings);
@@ -502,7 +503,7 @@ static void BrowserManagerThread(obs_data_t *settings)
 extern "C" EXPORT void obs_browser_initialize(obs_data_t *settings)
 {
 	if (!os_atomic_set_bool(&manager_initialized, true)) {
-#ifdef USE_UI_LOOP
+#ifdef ENABLE_BROWSER_QT_LOOP
 		BrowserInit(settings);
 #else
 		auto binded_fn = bind(BrowserManagerThread, settings);

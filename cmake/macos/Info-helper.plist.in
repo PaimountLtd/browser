@@ -32,6 +32,8 @@
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>(c) 2012-${CURRENT_YEAR} Lain Bailey</string>
+    <string>(c) 2012-${CURRENT_YEAR} Hugh Bailey</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.browser</string>
 </dict>
 </plist>
