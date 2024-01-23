@@ -168,7 +168,7 @@ elseif(OS_MACOS)
   target_sources(obs-browser PRIVATE macutil.mm)
 
   set(CEF_HELPER_TARGET "obs-browser-helper")
-  set(CEF_HELPER_OUTPUT_NAME "OBS Helper")
+  set(CEF_HELPER_OUTPUT_NAME "obs64 Helper")
   set(CEF_HELPER_APP_SUFFIXES "::" " (GPU):_gpu:.gpu" " (Plugin):_plugin:.plugin" " (Renderer):_renderer:.renderer")
 
   foreach(_SUFFIXES ${CEF_HELPER_APP_SUFFIXES})
