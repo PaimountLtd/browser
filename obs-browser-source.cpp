@@ -256,7 +256,7 @@ bool BrowserSource::CreateBrowser()
 		} else {
 			blog(LOG_INFO, "CreateBrowserSync - fail");
 		}
-		
+
 		SetBrowser(browser);
 
 		if (reroute_audio)

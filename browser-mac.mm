@@ -45,30 +45,30 @@ bool ExecuteNextBrowserTask()
 
 void ExecuteTask(MessageTask task)
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        task();
-    });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		task();
+	});
 }
 
 void ExecuteSyncTask(MessageTask task)
 {
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        task();
-    });
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		task();
+	});
 }
 
 void DoCefMessageLoop(int)
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
+	dispatch_async(dispatch_get_main_queue(), ^{
 		CefDoMessageLoopWork();
-    });
+	});
 }
 
 void Process()
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        CefDoMessageLoopWork();
-    });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		CefDoMessageLoopWork();
+	});
 }
 
 #if 0 // REMOVE_DUPLICATE
@@ -85,25 +85,29 @@ void QueueBrowserTask(CefRefPtr<CefBrowser> browser, BrowserFunc func)
 
 bool isMainThread()
 {
-    return [NSThread isMainThread];
+	return [NSThread isMainThread];
 }
 
 std::string getExecutablePath()
 {
-    char path[1024];
-    uint32_t size = sizeof(path);
-    _NSGetExecutablePath(path, &size);
-    return path;
+	char path[1024];
+	uint32_t size = sizeof(path);
+	_NSGetExecutablePath(path, &size);
+	return path;
 }
 
 bool isHighThanBigSur()
 {
-    char buf[100];
-    size_t buflen = 100;
-    if (sysctlbyname("machdep.cpu.brand_string", &buf, &buflen, NULL, 0) < 0)
-        return false;
+	char buf[100];
+	size_t buflen = 100;
+	if (sysctlbyname("machdep.cpu.brand_string", &buf, &buflen, NULL, 0) <
+	    0)
+		return false;
 
-    NSOperatingSystemVersion OSversion = [NSProcessInfo processInfo].operatingSystemVersion;
-    return ((OSversion.majorVersion >= 10 && OSversion.minorVersion >= 16) ||
-        OSversion.majorVersion >= 11) && strcmp("Apple M1", buf) != 0;
+	NSOperatingSystemVersion OSversion =
+		[NSProcessInfo processInfo].operatingSystemVersion;
+	return ((OSversion.majorVersion >= 10 &&
+		 OSversion.minorVersion >= 16) ||
+		OSversion.majorVersion >= 11) &&
+	       strcmp("Apple M1", buf) != 0;
 }

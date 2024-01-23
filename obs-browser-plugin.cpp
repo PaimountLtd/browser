@@ -397,8 +397,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		std::string binPath = getExecutablePath();
 		binPath = binPath.substr(0,
 					 binPath.size() - strlen("/bin/obs64"));
-		binPath +=
-			"/Frameworks/Chromium Embedded Framework.framework";
+		binPath += "/Frameworks/Chromium Embedded Framework.framework";
 		CefString(&settings.framework_dir_path) = binPath;
 #endif
 		std::string obs_locale = obs_get_locale();
@@ -414,7 +413,7 @@ static void BrowserInit(obs_data_t *settings_obs)
 		BPtr<char> conf_path_abs = os_get_abs_path_ptr(conf_path);
 		CefString(&settings.locale) = obs_get_locale();
 		CefString(&settings.accept_language_list) = accepted_languages;
-	settings.persist_user_preferences = 1;
+		settings.persist_user_preferences = 1;
 		CefString(&settings.cache_path) = conf_path_abs;
 #if !defined(__APPLE__) || defined(ENABLE_BROWSER_LEGACY)
 		char *abs_path = os_get_abs_path_ptr(path.c_str());
