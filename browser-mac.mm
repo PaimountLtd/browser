@@ -16,7 +16,6 @@
 
 ******************************************************************************/
 
-#include <obs-module.h>
 #include "browser-mac.h"
 #include <mach-o/dyld.h>
 #include <sys/types.h>
@@ -47,7 +46,6 @@ bool ExecuteNextBrowserTask()
 void ExecuteTask(MessageTask task)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        blog(LOG_INFO, "ExecuteTask");
         task();
     });
 }
@@ -55,7 +53,6 @@ void ExecuteTask(MessageTask task)
 void ExecuteSyncTask(MessageTask task)
 {
     dispatch_sync(dispatch_get_main_queue(), ^{
-        blog(LOG_INFO, "ExecuteSyncTask");
         task();
     });
 }

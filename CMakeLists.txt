@@ -29,15 +29,11 @@ target_sources(
           browser-app.cpp
           browser-app.hpp
           browser-client.cpp
-          browser-mac.mm
-          browser-mac.h
           browser-client.hpp
           browser-scheme.cpp
           browser-scheme.hpp
           browser-version.h
           cef-headers.hpp
-          deps/json11/json11.cpp
-          deps/json11/json11.hpp
           deps/base64/base64.cpp
           deps/base64/base64.hpp
           deps/wide-string.cpp
@@ -46,10 +42,15 @@ target_sources(
           deps/signal-restore.hpp
           deps/obs-websocket-api/obs-websocket-api.h)
 
+list(APPEND obs-browser_SOURCES
+          browser-mac.mm
+          browser-mac.h
+        )
+
 target_include_directories(obs-browser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
 target_compile_features(obs-browser PRIVATE cxx_std_17)
-target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api)
+target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api nlohmann_json::nlohmann_json)
 
 if(OS_WINDOWS)
   include(cmake/os-windows.cmake)

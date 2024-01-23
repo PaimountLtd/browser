@@ -22,3 +22,4 @@ set_target_properties_obs(
              INSTALL_RPATH "$ORIGIN/"
              PREFIX ""
              OUTPUT_NAME obs-browser-page)
+             

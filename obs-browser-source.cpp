@@ -435,7 +435,8 @@ void BrowserSource::SetShowing(bool showing)
 							  PID_RENDERER, msg);
 			},
 			true);
-		Json json = Json::object{{"visible", showing}};
+		nlohmann::json json;
+		json["visible"] = showing;
 		DispatchJSEvent("obsSourceVisibleChanged", json.dump(), this);
 #if defined(BROWSER_EXTERNAL_BEGIN_FRAME_ENABLED) && \
 	defined(ENABLE_BROWSER_SHARED_TEXTURE)
@@ -471,7 +472,8 @@ void BrowserSource::SetActive(bool active)
 						  msg);
 		},
 		true);
-	Json json = Json::object{{"active", active}};
+	nlohmann::json json;
+	json["active"] = active;
 	DispatchJSEvent("obsSourceActiveChanged", json.dump(), this);
 }
 
