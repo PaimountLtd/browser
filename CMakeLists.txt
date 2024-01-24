@@ -20,36 +20,38 @@ add_library(OBS::browser ALIAS obs-browser)
 option(ENABLE_BROWSER_PANELS "Enable Qt web browser panel support" ON)
 mark_as_advanced(ENABLE_BROWSER_PANELS)
 
-target_sources(
-  obs-browser
-  PRIVATE obs-browser-plugin.cpp
-          obs-browser-source.cpp
-          obs-browser-source.hpp
-          obs-browser-source-audio.cpp
-          browser-app.cpp
-          browser-app.hpp
-          browser-client.cpp
-          browser-mac.mm
-          browser-mac.h
-          browser-client.hpp
-          browser-scheme.cpp
-          browser-scheme.hpp
-          browser-version.h
-          cef-headers.hpp
-          deps/json11/json11.cpp
-          deps/json11/json11.hpp
-          deps/base64/base64.cpp
-          deps/base64/base64.hpp
-          deps/wide-string.cpp
-          deps/wide-string.hpp
-          deps/signal-restore.cpp
-          deps/signal-restore.hpp
-          deps/obs-websocket-api/obs-websocket-api.h)
+set(obs-browser_SOURCES
+  obs-browser-plugin.cpp
+  obs-browser-source.cpp
+  obs-browser-source.hpp
+  obs-browser-source-audio.cpp
+  browser-app.cpp
+  browser-app.hpp
+  browser-client.cpp
+  browser-client.hpp
+  browser-scheme.cpp
+  browser-scheme.hpp
+  browser-version.h
+  cef-headers.hpp
+  deps/base64/base64.cpp
+  deps/base64/base64.hpp
+  deps/wide-string.cpp
+  deps/wide-string.hpp
+  deps/signal-restore.cpp
+  deps/signal-restore.hpp
+  deps/obs-websocket-api/obs-websocket-api.h browser-mac.mm browser-mac.h)
 
+if(OS_MACOS)
+  list(APPEND obs-browser_SOURCES
+    browser-mac.mm
+    browser-mac.h)
+endif()
+
+target_sources(obs-browser PRIVATE ${obs-browser_SOURCES})
 target_include_directories(obs-browser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
 target_compile_features(obs-browser PRIVATE cxx_std_17)
-target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api)
+target_link_libraries(obs-browser PRIVATE OBS::libobs OBS::frontend-api nlohmann_json::nlohmann_json)
 
 if(OS_WINDOWS)
   include(cmake/os-windows.cmake)

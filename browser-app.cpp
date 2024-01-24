@@ -18,7 +18,6 @@
 
 #include "browser-app.hpp"
 #include "browser-version.h"
-//#include <json11/json11.hpp>
 #include <iostream>
 #include <mutex>
 #include <nlohmann/json.hpp>
