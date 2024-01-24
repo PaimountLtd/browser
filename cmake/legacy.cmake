@@ -1,4 +1,4 @@
-roject(obs-browser)
+project(obs-browser)
 
 option(ENABLE_BROWSER "Enable building OBS with browser source plugin (required Chromium Embedded Framework)"
        ${OS_LINUX})
