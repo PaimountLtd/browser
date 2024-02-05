@@ -3,7 +3,7 @@ project(obs-browser)
 option(ENABLE_BROWSER "Enable building OBS with browser source plugin (required Chromium Embedded Framework)"
        ${OS_LINUX})
 
-if(NOT ENABLE_BROWSER OR NOT ENABLE_UI)
+if(NOT ENABLE_BROWSER)
   message(STATUS "OBS:  DISABLED   obs-browser")
   message(
     WARNING
