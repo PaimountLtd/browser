@@ -367,10 +367,11 @@ static void BrowserInit(obs_data_t *settings_obs)
 			 << std::to_string(cef_version_info(5)) << "."
 			 << std::to_string(cef_version_info(6)) << "."
 			 << std::to_string(cef_version_info(7));
-		prod_ver << " SLD/";
+		prod_ver << " OBS/";
 		prod_ver << std::to_string(obs_maj) << "."
 			 << std::to_string(obs_min) << "."
 			 << std::to_string(obs_pat);
+		prod_ver << " SLD";
 
 #if CHROME_VERSION_BUILD >= 4472
 		CefString(&settings.user_agent_product) = prod_ver.str();
