@@ -1,15 +1,13 @@
-find_qt(COMPONENTS Widgets)
-
 find_library(COREFOUNDATION CoreFoundation)
 find_library(APPKIT AppKit)
 mark_as_advanced(COREFOUNDATION APPKIT)
 
-target_compile_definitions(obs-browser PRIVATE ENABLE_BROWSER_SHARED_TEXTURE ENABLE_BROWSER_QT_LOOP)
+target_compile_definitions(obs-browser PRIVATE ENABLE_BROWSER_SHARED_TEXTURE)
 if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 14.0.3)
   target_compile_options(obs-browser PRIVATE -Wno-error=unqualified-std-cast-call)
 endif()
 
-target_link_libraries(obs-browser PRIVATE Qt::Widgets ${COREFOUNDATION} ${APPKIT} CEF::Wrapper)
+target_link_libraries(obs-browser PRIVATE ${COREFOUNDATION} ${APPKIT} CEF::Wrapper)
 
 set(helper_basename browser-helper)
 set(helper_output_name "obs64 Helper")
